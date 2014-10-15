@@ -12,7 +12,8 @@ LayeredConfig
         :target: https://pypi.python.org/pypi/layeredconfig
 
 
-Manages configuration coming from fconfig files, environment variables, command line arguments, code defaults or other sources
+Manages configuration coming from config files, environment variables,
+command line arguments, code defaults or other sources
 
 * Free software: BSD license
 * Documentation: https://layeredconfig.readthedocs.org.

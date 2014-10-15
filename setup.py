@@ -15,6 +15,9 @@ requirements = [
     'six'
 ]
 
+if sys.version_info < (2,7,0):
+    requirements.append('ordereddict >= 1.1')
+
 test_requirements = [
     # TODO: put package test requirements here
 ]
