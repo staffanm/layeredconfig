@@ -177,7 +177,7 @@ class TestCommandline(unittest.TestCase):
         self.assertEqual(cfg.mymodule.arbitrary.nesting.depth, 'works')
         with self.assertRaises(AttributeError):
             cfg.lastrun
-        self.assertEqual(cfg.mymodule.lastrun,"2012-09-18 15:41:00")
+        self.assertEqual(cfg.mymodule.lastrun,"2012-09-18T15:41:00")
 
 
 class TestTyping(unittest.TestCase):

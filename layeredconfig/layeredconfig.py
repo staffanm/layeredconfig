@@ -2,7 +2,11 @@
 
 import os
 import sys
+from collections import defaultdict
 
+from six import text_type as str
+from six import binary_type as bytes
+from six.moves import configparser
 
 try:
     from collections import OrderedDict
@@ -85,6 +89,13 @@ class ConfigSource(object):
             t = datetimeconvert
         # print("Converting %r to %r" % (value,t(value)))
         return t(value)
+
+
+    def subsections(self):
+        return []
+
+    def subsection(self, key):
+        raise KeyError("No subsection named '%s'" % key)
 
 
 class Defaults(ConfigSource):
@@ -178,8 +189,10 @@ class Environment(ConfigSource):
 
 
 class Commandline(ConfigSource):
-    def __init__(self, argv=sys.argv, identifier="commandline"):
+    def __init__(self, commandline=sys.argv, sectionsep="-", identifier="commandline"):
         """
+        Load configuration from command line options.
+        
         :param commandline: The contents of sys.argv, or something
                             similar. Any long-style parameters are
                             turned into configuration values, and
@@ -187,16 +200,15 @@ class Commandline(ConfigSource):
                             nested config objects
                             (i.e. ``--module-parameter=foo`` results
                             in self.module.parameter == "foo".
-        :type commandline: list
+        :type  commandline: list
+        :param sectionsep: if you don't want to separate nested config
+                           objects with "-" you can specify another
+                           separator.
+        :type  sectionsep: str
         """
-        self.config = None
-
-    # For now: only support long arguments with = separating the parameter and the value, ie
-    # "./foo.py --longarg=value" works, "./foo.py --longarg value" or even
-    # "./foo.py --longarg = value" doesn't work.
-    def _load_commandline(self, commandline):
-        if not commandline:
-            return
+        self.source = OrderedDict()
+        self.sectionargvs = defaultdict(list)
+        self.sectionsep = sectionsep
         for arg in commandline:
             if isinstance(arg, bytes):
                 arg = arg.decode("utf-8") # FIXME: Find out proper way
@@ -209,34 +221,52 @@ class Commandline(ConfigSource):
                     (param, value) = (arg, True)  # assume bool, not str
                 # '--param' => ['param']
                 # '--module-param' => ['module','param']
-                # Note: Options may not contains hyphens (ie they can't
-                # be called "parse-force") since this clashes with hyphen
-                # as the sectionkey separator.
-                parts = param[2:].split("-")
+                # Note: parameter names may not contain sectionsep (ie
+                # they can't be called "parse-force").
+                parts = param[2:].split(sectionsep)
+                self._load_commandline_part(parts, value, self.sectionargvs)
 
-                self._load_commandline_part(parts, value)
-
-    def _load_commandline_part(self, parts, value):
+    def _load_commandline_part(self, parts, value, sectionargvs):
         if len(parts) == 1:
             key = parts[0]
-            if type(value) != bool:  # bools are created implicitly for value-less options
-                value = self._type_value(key, value)
+            
+            # if type(value) != bool:  # bools are created implicitly for value-less options
+            #     value = self._type_value(key, value)
             # create a new value, or append to an existing list?
-            if key in self._commandline:
-                if not isinstance(self._commandline[key], list):
-                    self._commandline[key] = [self._commandline[key]]
-                self._commandline[key].append(value)
+            if key in self.source:
+                if not isinstance(self.source[key], list):
+                    self.source[key] = [self.source[key]]
+                self.source[key].append(value)
             else:
-                self._commandline[key] = value
-
+                self.source[key] = value
         else:
             (sectionkey) = parts[0]
-            if sectionkey not in self._subsections:
-                self._subsections[
-                    sectionkey] = LayeredConfig(cascade=self._cascade)
-                self._subsections[sectionkey]._sectionkey = sectionkey
-                self._subsections[sectionkey]._parent = self
-            self._subsections[sectionkey]._load_commandline_part(parts[1:], value)
+            # recreate the cmdline -- note that this will turn
+            # valueless options into explicit, ie "--foo" =>
+            # "--foo=True"
+            arg = "--%s=%s" % (self.sectionsep.join(parts[1:]), value)
+            sectionargvs[sectionkey].append(arg)
+
+    def subsections(self):
+        return self.sectionargvs.keys()
+        
+    def subsection(self, key):
+        return Commandline(self.sectionargvs[key], )
+
+    def has(self, k):
+        return k in self.source
+
+    def get(self, k):
+        # FIXME: run self_type_value using a type information source
+        # that we somehow have access to.
+        return self.source[k]
+
+    def set(self, k, v):
+        self.source[k] = v
+       
+    def __iter__(self):
+        return self.source.__iter__()  # or "for k in self.source: yield k"
+        # what about subsections?
 
 
 class LayeredConfig(object):
