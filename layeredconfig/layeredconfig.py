@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import itertools
 import os
 import sys
+import logging
 from collections import defaultdict
 
 from six import text_type as str
@@ -15,8 +17,6 @@ except ImportError: # pragma: no cover
     from ordereddict import OrderedDict
 
 class ConfigSource(object):
-
-    
     def register_conversion(type, func):
         """
         >>> def convert_complex(s):
@@ -25,7 +25,10 @@ class ConfigSource(object):
         >>> # now type conversion can handle complex numbers
         """
         pass
-        
+
+    def typed(self, key):
+        return False
+
     def _type_value(self, key, value):
         """Find appropriate method/class constructor to convert a
            string value to the correct type IF we know the correct
@@ -85,11 +88,12 @@ class ConfigSource(object):
             t = boolconvert
         elif t == list:
             t = listconvert
-        elif t == datetime.datetime:
+        elif t == date:
+            t = dateconvert
+        elif t == datetime:
             t = datetimeconvert
         # print("Converting %r to %r" % (value,t(value)))
         return t(value)
-
 
     def subsections(self):
         return []
@@ -118,6 +122,9 @@ class Defaults(ConfigSource):
     def subsection(self, key):
         return Defaults(self.source[key])
 
+    def typed(self, key):
+        return True
+
     def has(self, k):
         return k in self.source
 
@@ -133,7 +140,12 @@ class Defaults(ConfigSource):
         
 
 class INIFile(ConfigSource):
-    def __init__(self, inifilename=None, identifier="inifile"):
+    def __init__(self,
+                 inifilename=None,
+                 config=None,
+                 identifier="inifile",
+                 section=None,
+                 defaultsection="__root__"):
         """
         :param inifile: The name of a ini-style configuration file. The
                         file should have a top-level section named
@@ -143,39 +155,76 @@ class INIFile(ConfigSource):
                         objects.
         :type inifile: str
         """
-        self.config = None
-        if not inifilename:
-            self._configparser = None
-            return
-        if not os.path.exists(inifilename):
-            logging.warn("INI file %s does not exist" % inifilename)
-            self._configparser = None
-            return
+        if inifilename:
+            if not os.path.exists(inifilename):
+                logging.warn("INI file %s does not exist" % inifilename)
+                self.source = None
+            else:
+                self.source = configparser.ConfigParser(dict_type=OrderedDict)
+                self.source.read(inifilename)
+        elif config:
+            self.source = config
+        else:
+            raise ValueError("Neither inifilename nor config parser object specified")
+        if section:
+            self.sectionkey = section
+        else:
+            self.sectionkey = defaultsection
+        self.defaultsection = defaultsection
 
-        self._configparser = configparser.ConfigParser(dict_type=OrderedDict)
-        self._configparser.read(inifilename)
+    def subsections(self):
+        # self.source may be None if we provided the path to a
+        # nonexistent inifile (this should probably throw an exception
+        # instead)
+        if not self.source:
+            return []
+        elif self.sectionkey != self.defaultsection:
+            # sections can't be nested using configparser
+            return []
+        else:
+            return [x for x in self.source.sections() if x != self.defaultsection]
 
-        if self._configparser.has_section('__root__'):
-            self._load_inifile_section('__root__')
-        for sectionkey in self._configparser.sections():
+    def subsection(self, key):
+        return INIFile(config=self.source, section=key)
 
-            # Do we have a LayeredConfig object for sectionkey already?
-            if sectionkey not in self._subsections:
-                self._subsections[
-                    sectionkey] = LayeredConfig(cascade=self._cascade)
-                self._subsections[sectionkey]._sectionkey = sectionkey
-                self._subsections[sectionkey]._parent = self
+    def has(self, key):
+        return key in self.source.options(self.sectionkey)
+        
+    def get(self, key):
+        return str(self.source.get(self.sectionkey, key))
 
-            if self._subsections[sectionkey]._configparser is None:
-                self._subsections[
-                    sectionkey]._configparser = self._configparser
+    def set(self, key, value):
+        self.source.set(self.sectionkey, key, value)
+        
+    def __iter__(self):
+        if self.source:
+            for k in self.source.options(self.sectionkey):
+                yield k
 
-            self._subsections[sectionkey]._load_inifile_section(sectionkey)
-        # return cfgparser
+#        if self._configparser.has_section(rootsection):
+#            self._load_inifile_section(rootsection)
+#
+#
+#        for sectionkey in self._configparser.sections():
+#
+#            # Do we have a LayeredConfig object for sectionkey already?
+#            if sectionkey not in self._subsections:
+#                self._subsections[
+#                    sectionkey] = LayeredConfig(cascade=self._cascade)
+#                self._subsections[sectionkey]._sectionkey = sectionkey
+#                self._subsections[sectionkey]._parent = self
+#
+#            if self._subsections[sectionkey]._configparser is None:
+#                self._subsections[
+#                    sectionkey]._configparser = self._configparser
+#
+#            self._subsections[sectionkey]._load_inifile_section(sectionkey)
+#        # return cfgparser
+#
+#    def _load_inifile_section(self, sectionname):
+#        for (key, value) in self._configparser.items(sectionname):
+#            self._inifile[key] = self._type_value(key, value)
 
-    def _load_inifile_section(self, sectionname):
-        for (key, value) in self._configparser.items(sectionname):
-            self._inifile[key] = self._type_value(key, value)
 
 
 class JSONFile(ConfigSource):
@@ -269,8 +318,24 @@ class Commandline(ConfigSource):
         # what about subsections?
 
 
-class LayeredConfig(object):
+# requires PyYaml
+class YAMLFile(ConfigSource):
+    pass
 
+
+# builtin
+import plistlib
+class PList(ConfigSource):
+    pass
+
+
+# requires requests or python-etcd
+class Etcd(ConfigSource):
+    """Allows configuration to be read from (and stored in) an etcd store."""
+    pass
+
+
+class LayeredConfig(object):
     def __init__(self, *sources, **kwargs):
         """Creates a config object from zero or more sources.
 
@@ -353,7 +418,9 @@ class LayeredConfig(object):
                 if k in list(src.subsections()):
                     s.append(src.subsection(k))
             # 3. create a LayeredConfig object for the subsection
-            c = LayeredConfig(*s)
+            c = LayeredConfig(*s,
+                              cascade=self._cascade,
+                              writable=self._writable)
             c._sectionkey = k
             self._subsections[k] = c
             
@@ -406,14 +473,11 @@ class LayeredConfig(object):
         
     def __iter__(self):
         l = []
-        iterables = [self._commandline.keys(),
-                     self._inifile.keys(),
-                     self._defaults.keys()]
 
         if self._cascade and self._parent:
             iterables.append(self._parent)
         
-        for k in itertools.chain(*iterables):
+        for k in itertools.chain(*self._sources):
             if k not in l:
                 l.append(k)
                 yield k
@@ -425,9 +489,21 @@ class LayeredConfig(object):
 
         if name in self._subsections:
             return self._subsections[name]
-        for source in self._sources:
+
+        # find a source that can provide typeinfo for this. In which
+        # order? same as priority? yeah that makes sense.
+        typesource = None
+        for source in reversed(self._sources):
+            if source.has(name) and source.typed(name):
+                typesource = source
+                break
+
+        for source in reversed(self._sources):
             if source.has(name):
-                return source.get(name) # optional typing info
+                if source.typed(name) or not typesource:
+                    return source.get(name)
+                else:
+                    return typesource.typevalue(name, source.get(name))
 
         if self._cascade and self._parent:
             return self._parent.__getattribute(name)
@@ -478,159 +554,3 @@ class LayeredConfig(object):
             # LayeredConfig instance was created without one. There is
             # no way to persist configuration values, so we're done
             pass
-
-    def _load_defaults(self, defaults):
-        if not defaults:
-            return
-        for (k, v) in defaults.items():
-            if isinstance(v, dict):
-                self._subsections[k] = LayeredConfig(
-                    defaults=v, cascade=self._cascade)
-                self._subsections[k]._sectionkey = k
-                self._subsections[k]._parent = self
-            else:
-                self._defaults[k] = v
-
-    def _load_inifile(self, inifilename):
-        if not inifilename:
-            self._configparser = None
-            return
-        if not os.path.exists(inifilename):
-            logging.warn("INI file %s does not exist" % inifilename)
-            self._configparser = None
-            return
-
-        self._configparser = configparser.ConfigParser(dict_type=OrderedDict)
-        self._configparser.read(inifilename)
-
-        if self._configparser.has_section('__root__'):
-            self._load_inifile_section('__root__')
-        for sectionkey in self._configparser.sections():
-
-            # Do we have a LayeredConfig object for sectionkey already?
-            if sectionkey not in self._subsections:
-                self._subsections[
-                    sectionkey] = LayeredConfig(cascade=self._cascade)
-                self._subsections[sectionkey]._sectionkey = sectionkey
-                self._subsections[sectionkey]._parent = self
-
-            if self._subsections[sectionkey]._configparser is None:
-                self._subsections[
-                    sectionkey]._configparser = self._configparser
-
-            self._subsections[sectionkey]._load_inifile_section(sectionkey)
-        # return cfgparser
-
-    def _type_value(self, key, value):
-        """Find appropriate method/class constructor to convert a
-           string value to the correct type IF we know the correct
-           type."""
-        def boolconvert(value):
-            # not all bools should be converted, see test_typed_commandline
-            if value == "True":
-                return True
-            elif value == "False":
-                return False
-            else:
-                return value
-            
-        def listconvert(value):
-            # this function is called with both string represenations
-            # of entire lists and simple (unquoted) strings. The
-            # ast.literal_eval handles the first case, and if the
-            # value can't be parsed as a python expression, it is
-            # returned verbatim (not wrapped in a list, for reasons)
-            try:
-                return ast.literal_eval(value)
-            except (SyntaxError, ValueError):
-                return value
-
-        def datetimeconvert(value):
-            try:
-                return datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
-            except ValueError:
-                return datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-
-        # find the appropriate defaults object. In the case of
-        # cascading, could be any parent that has a key key.
-        defaults = self._defaults  # base case
-        if self._cascade:
-            cfg_obj = self
-            while cfg_obj is not None:
-                if key in cfg_obj._defaults:
-                    defaults = cfg_obj._defaults
-                    break  # done!
-                if hasattr(cfg_obj, '_parent'):
-                    cfg_obj = cfg_obj._parent
-                else:
-                    cfg_obj = None
-
-        if key in defaults:
-            if type(defaults[key]) == type:
-                # print("Using class for %s" % key)
-                t = defaults[key]
-            else:
-                # print("Using instance for %s" % key)
-                t = type(defaults[key])
-        else:
-            t = str
-
-        if t == bool:
-            t = boolconvert
-        elif t == list:
-            t = listconvert
-        elif t == datetime.datetime:
-            t = datetimeconvert
-        # print("Converting %r to %r" % (value,t(value)))
-        return t(value)
-
-    def _load_inifile_section(self, sectionname):
-        for (key, value) in self._configparser.items(sectionname):
-            self._inifile[key] = self._type_value(key, value)
-
-    # For now: only support long arguments with = separating the parameter and the value, ie
-    # "./foo.py --longarg=value" works, "./foo.py --longarg value" or even
-    # "./foo.py --longarg = value" doesn't work.
-    def _load_commandline(self, commandline):
-        if not commandline:
-            return
-        for arg in commandline:
-            if isinstance(arg, bytes):
-                arg = arg.decode("utf-8") # FIXME: Find out proper way
-                                          # of finding the encoding of
-                                          # argv
-            if arg.startswith("--"):
-                if "=" in arg:
-                    (param, value) = arg.split("=", 1)
-                else:
-                    (param, value) = (arg, True)  # assume bool, not str
-                # '--param' => ['param']
-                # '--module-param' => ['module','param']
-                # Note: Options may not contains hyphens (ie they can't
-                # be called "parse-force") since this clashes with hyphen
-                # as the sectionkey separator.
-                parts = param[2:].split("-")
-
-                self._load_commandline_part(parts, value)
-
-    def _load_commandline_part(self, parts, value):
-        if len(parts) == 1:
-            key = parts[0]
-            if type(value) != bool:  # bools are created implicitly for value-less options
-                value = self._type_value(key, value)
-            # create a new value, or append to an existing list?
-            if key in self._commandline:
-                if not isinstance(self._commandline[key], list):
-                    self._commandline[key] = [self._commandline[key]]
-                self._commandline[key].append(value)
-            else:
-                self._commandline[key] = value
-
-        else:
-            (sectionkey) = parts[0]
-            if sectionkey not in self._subsections:
-                self._subsections[
-                    sectionkey] = LayeredConfig(cascade=self._cascade)
-                self._subsections[sectionkey]._sectionkey = sectionkey
-                self._subsections[sectionkey]._parent = self
-            self._subsections[sectionkey]._load_commandline_part(parts[1:], value)

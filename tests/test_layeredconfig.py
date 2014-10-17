@@ -8,6 +8,7 @@ test_layeredconfig
 Tests for `layeredconfig` module.
 """
 
+import os
 import unittest
 from six import text_type as str
 from datetime import date, datetime
@@ -103,11 +104,25 @@ jsfiles = ['default.js','modernizr.js']
 
         cfg = LayeredConfig(INIFile("nonexistent.ini"))
         self.assertEqual([], list(cfg))
+        os.unlink("ferenda.ini")
 
-        
     def test_inifile_subsections(self):
-        cfg = LayeredConfig(INIFile("ferenda.ini"))
+        with open("ferenda.ini","w") as fp:
+            fp.write("""
+[__root__]
+datadir = mydata
+processes = 4
+loglevel = INFO
+forceparse = True
+jsfiles = ['default.js','modernizr.js']
 
+[mymodule]
+loglevel = DEBUG
+forceparse=False
+jsfiles = ['pdfviewer.js','zepto.js']
+lastrun = 2012-09-18 15:41:00
+""")
+        cfg = LayeredConfig(INIFile("ferenda.ini"))
         self.assertEqual(cfg.datadir,'mydata')
         with self.assertRaises(AttributeError):
             cfg.mymodule.datadir
@@ -123,6 +138,7 @@ jsfiles = ['default.js','modernizr.js']
         with self.assertRaises(AttributeError):
             cfg.lastrun
         self.assertEqual(cfg.mymodule.lastrun,"2012-09-18 15:41:00")
+        os.unlink("ferenda.ini")
 
 
 class TestCommandline(unittest.TestCase):
@@ -189,7 +205,7 @@ class TestTyping(unittest.TestCase):
                  'jsfiles':list, 
                  'mymodule':{'forceparse':bool,
                              'lastrun':datetime}}
-        
+
         cfg = LayeredConfig(Defaults(types),INIFile("ferenda.ini"))
         # cfg = LayeredConfig(inifile="ferenda.ini")
         self.assertEqual(cfg.datadir,'mydata')

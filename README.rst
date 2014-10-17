@@ -13,7 +13,16 @@ LayeredConfig
 
 
 Manages configuration coming from config files, environment variables,
-command line arguments, code defaults or other sources
+command line arguments, hard-coded default values, etcd stores or
+other backends
+
+It support INI-style files, JSON files, YAML files and PList files.
+
+Configuration can be changed programatically (i.e. to update a
+"lastmodified" setting or similar), and changes can be saved to
+the backend of your choice.
+
+
 
 * Free software: BSD license
 * Documentation: https://layeredconfig.readthedocs.org.
