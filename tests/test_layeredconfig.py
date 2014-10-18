@@ -17,10 +17,83 @@ from datetime import date, datetime
 from layeredconfig import LayeredConfig, Defaults, INIFile, Environment, Commandline
 
 
-class TestDefaults(unittest.TestCase):
+class TestHelper(object):
+    def _test_mainsection(self, cfg,
+                          int_type=int,
+                          bool_type=bool,
+                          list_type=list,
+                          date_type=date,
+                          datetime_type=datetime):
+
+        self.assertIs(type(cfg.home), str)
+        self.assertEqual(cfg.home, 'mydata')
+        self.assertIs(type(cfg.processes), int_type)
+        self.assertEqual(cfg.processes, int_type(4))
+        self.assertIs(type(cfg.force), bool_type)
+        self.assertEqual(cfg.force, bool_type(True))
+        self.assertIs(type(cfg.extra), list_type)
+        if list_type == str:
+            want = "['foo','bar']"
+        else:
+            want = ['foo', 'bar']
+        self.assertEqual(cfg.extra, want)
+        self.assertIs(type(cfg.expires), date_type)
+        self.assertEqual(cfg.expires, date_type(date(2014, 10, 15)))
+        self.assertIs(type(cfg.lastrun), datetime_type)
+        self.assertEqual(cfg.lastrun, datetime_type(datetime(2014, 10, 15, 14, 32, 7)))
+
+    def _test_subsections(self, cfg,
+                          int_type=int,
+                          bool_type=bool,
+                          list_type=list,
+                          date_type=date,
+                          datetime_type=datetime,
+                          arbitrary_nesting=True):
+        self.assertEqual(cfg.home, 'mydata')
+        with self.assertRaises(AttributeError):
+            cfg.mymodule.home
+        self.assertEqual(cfg.processes, int_type(4))
+        with self.assertRaises(AttributeError):
+            cfg.mymodule.processes
+        self.assertEqual(cfg.force, bool_type(True))
+        self.assertEqual(cfg.mymodule.force, bool_type(False))
+        if list_type == str:
+            want = "['foo','bar']"
+        else:
+            want = ['foo', 'bar']
+        self.assertEqual(cfg.extra, want)
+        if list_type == str:
+            want = "['foo','baz']"
+        else:
+            want = ['foo', 'baz']
+        self.assertEqual(cfg.mymodule.extra, want)
+        # not supported for INIFile
+        if arbitrary_nesting:
+            self.assertEqual(cfg.mymodule.arbitrary.nesting.depth, 'works')
+        with self.assertRaises(AttributeError):
+            cfg.expires
+        self.assertEqual(cfg.mymodule.expires,
+                         date_type(date(2014, 10, 15)))
+
+
+class TestINIFileHelper(TestHelper):
 
     def setUp(self):
-        pass
+        with open("ferenda.ini", "w") as fp:
+            fp.write("""
+[__root__]
+home = mydata
+processes = 4
+force = True
+extra = ['foo','bar']
+expires = 2014-10-15
+lastrun = 2014-10-15 14:32:07
+""")
+
+    def tearDown(self):
+        os.unlink("ferenda.ini")
+
+class TestDefaults(unittest.TestCase, TestHelper):
 
     def test_defaults(self):
         cfg = LayeredConfig(
@@ -30,29 +103,15 @@ class TestDefaults(unittest.TestCase):
                       'extra': ['foo', 'bar'],
                       'expires': date(2014, 10, 15),
                       'lastrun': datetime(2014, 10, 15, 14, 32, 7)}))
-        
-        self.assertIs(type(cfg.home), str)
-        self.assertEqual(cfg.home, 'mydata')
-        self.assertIs(type(cfg.processes), int)
-        self.assertEqual(cfg.processes, 4)
-        self.assertIs(type(cfg.force), bool)
-        self.assertEqual(cfg.force, True)
-        self.assertIs(type(cfg.extra), list)
-        self.assertEqual(cfg.extra, ['foo', 'bar'])
-        self.assertIs(type(cfg.expires), date)
-        self.assertEqual(cfg.expires, date(2014, 10, 15))
-        self.assertIs(type(cfg.lastrun), datetime)
-        self.assertEqual(cfg.lastrun, datetime(2014, 10, 15, 14, 32, 7))
+        self._test_mainsection(cfg)
 
     def test_defaults_subsections(self):
-        # this tests the following datatypes:
-        # str, int, bool, list, datetime -- should cover most cases
         cfg = LayeredConfig(
             Defaults({'home': 'mydata',
                       'processes': 4,
-                      'forceparse': True,
+                      'force': True,
                       'extra': ['foo', 'bar'],
-                      'mymodule': {'forceparse': False,
+                      'mymodule': {'force': False,
                                    'extra': ['foo', 'baz'],
                                    'expires': datetime(2014, 10, 15),
                                    'arbitrary': {
@@ -61,194 +120,148 @@ class TestDefaults(unittest.TestCase):
                                        }
                                    }
                                }}))
-
-        self.assertEqual(cfg.home, 'mydata')
-        with self.assertRaises(AttributeError):
-            cfg.mymodule.home
-        self.assertEqual(cfg.processes, 4)
-        with self.assertRaises(AttributeError):
-            cfg.mymodule.processes
-        self.assertEqual(cfg.forceparse, True)
-        self.assertEqual(cfg.mymodule.forceparse, False)
-        self.assertEqual(cfg.extra, ['foo', 'bar'])
-        self.assertEqual(cfg.mymodule.extra, ['foo', 'baz'])
-        self.assertEqual(cfg.mymodule.arbitrary.nesting.depth, 'works')
-        with self.assertRaises(AttributeError):
-            cfg.expires
-        self.assertEqual(cfg.mymodule.expires,
-                         datetime(2014, 10, 15))
-
-    def tearDown(self):
-        pass
+        self._test_subsections(cfg)
 
 
-class TestINIFile(unittest.TestCase):
+class TestINIFile(TestINIFileHelper, unittest.TestCase):
     def test_inifile(self):
-        with open("ferenda.ini","w") as fp:
-            fp.write("""
-[__root__]
-datadir = mydata
-processes = 4
-forceparse = True
-jsfiles = ['default.js','modernizr.js']
-""")
         cfg = LayeredConfig(INIFile("ferenda.ini"))
-        self.assertEqual(cfg.datadir,'mydata')
-        self.assertIs(type(cfg.datadir),str)
-        self.assertEqual(cfg.processes,'4')
-        self.assertIs(type(cfg.processes),str)
-        self.assertEqual(cfg.forceparse,'True')
-        self.assertIs(type(cfg.forceparse),str)
-        self.assertEqual(cfg.jsfiles,"['default.js','modernizr.js']")
-        self.assertIs(type(cfg.jsfiles),str)
-
-        cfg = LayeredConfig(INIFile("nonexistent.ini"))
-        self.assertEqual([], list(cfg))
-        os.unlink("ferenda.ini")
+        self._test_mainsection(cfg,
+                               int_type=str,
+                               bool_type=str,
+                               list_type=str,
+                               date_type=str,
+                               datetime_type=str)
 
     def test_inifile_subsections(self):
-        with open("ferenda.ini","w") as fp:
+        with open("ferenda.ini", "w") as fp:
             fp.write("""
 [__root__]
-datadir = mydata
+home = mydata
 processes = 4
 loglevel = INFO
-forceparse = True
-jsfiles = ['default.js','modernizr.js']
+force = True
+extra = ['foo','bar']
 
 [mymodule]
 loglevel = DEBUG
-forceparse=False
-jsfiles = ['pdfviewer.js','zepto.js']
-lastrun = 2012-09-18 15:41:00
+force=False
+extra = ['foo','baz']
+expires: 2014-10-15
+lastrun = 2014-10-15 14:32:07
 """)
         cfg = LayeredConfig(INIFile("ferenda.ini"))
-        self.assertEqual(cfg.datadir,'mydata')
-        with self.assertRaises(AttributeError):
-            cfg.mymodule.datadir
-        self.assertEqual(cfg.processes,'4')
-        with self.assertRaises(AttributeError):
-            cfg.mymodule.processes
-        self.assertEqual(cfg.loglevel,'INFO')
-        self.assertEqual(cfg.mymodule.loglevel,'DEBUG')
-        self.assertEqual(cfg.forceparse,'True')
-        self.assertEqual(cfg.mymodule.forceparse,'False')
-        self.assertEqual(cfg.jsfiles,"['default.js','modernizr.js']")
-        self.assertEqual(cfg.mymodule.jsfiles,"['pdfviewer.js','zepto.js']")
-        with self.assertRaises(AttributeError):
-            cfg.lastrun
-        self.assertEqual(cfg.mymodule.lastrun,"2012-09-18 15:41:00")
-        os.unlink("ferenda.ini")
+        self._test_subsections(cfg,
+                               int_type=str,
+                               bool_type=str,
+                               list_type=str,
+                               date_type=str,
+                               datetime_type=str,
+                               arbitrary_nesting=False)
+
+    def test_inifile_nonexistent(self):
+        cfg = LayeredConfig(INIFile("nonexistent.ini"))
+        self.assertEqual([], list(cfg))
 
 
-class TestCommandline(unittest.TestCase):
+class TestCommandline(unittest.TestCase, TestHelper):
 
     def test_commandline(self):
-        cmdline = ['--datadir=mydata',
+        cmdline = ['--home=mydata',
                    '--processes=4',
                    '--loglevel=INFO',
-                   '--forceparse=True', # results in string, not bool - compare to --implicitboolean below
-                   '--jsfiles=default.js',
-                   '--jsfiles=modernizr.js',
+                   '--force=True',  # results in string, not bool
+                   '--extra=foo',
+                   '--extra=bar',
                    '--implicitboolean']
         cfg = LayeredConfig(Commandline(cmdline))
-        self.assertEqual(cfg.datadir,'mydata')
-        self.assertIs(type(cfg.datadir),str)
-        self.assertEqual(cfg.processes,'4')
-        self.assertIs(type(cfg.processes),str)
-        self.assertEqual(cfg.forceparse,'True')
-        self.assertIs(type(cfg.forceparse),str)
-        self.assertEqual(cfg.jsfiles,['default.js','modernizr.js'])
-        self.assertIs(type(cfg.jsfiles),list)
+        self._test_mainsection(cfg,
+                               int_type=str,
+                               bool_type=str,
+                               list_type=list,
+                               date_type=str,
+                               datetime_type=str)
+
+        # extra test of implicitboolean
         self.assertTrue(cfg.implicitboolean)
-        self.assertIs(type(cfg.implicitboolean),bool)
+        self.assertIs(type(cfg.implicitboolean), bool)
         
     def test_commandline_subsections(self):
-        cmdline = ['--datadir=mydata',
+        cmdline = ['--home=mydata',
                    '--processes=4',
                    '--loglevel=INFO',
-                   '--forceparse=True',
-                   '--jsfiles=default.js',
-                   '--jsfiles=modernizr.js',
+                   '--force=True',
+                   '--extra=foo',
+                   '--extra=bar',
                    '--mymodule-loglevel=DEBUG',
-                   '--mymodule-forceparse=False',
-                   '--mymodule-jsfiles=pdfviewer.js',
-                   '--mymodule-jsfiles=zepto.js',
+                   '--mymodule-force=False',
+                   '--mymodule-extra=foo',
+                   '--mymodule-extra=baz',
                    '--mymodule-lastrun=2012-09-18T15:41:00', # 'T' is a new feature
                    '--mymodule-arbitrary-nesting-depth=works']
 
         cfg = LayeredConfig(Commandline(cmdline))
-        self.assertEqual(cfg.datadir,'mydata')
-        with self.assertRaises(AttributeError):
-            cfg.mymodule.datadir
-        self.assertEqual(cfg.processes,'4')
-        with self.assertRaises(AttributeError):
-            cfg.mymodule.processes
-        self.assertEqual(cfg.loglevel,'INFO')
-        self.assertEqual(cfg.mymodule.loglevel,'DEBUG')
-        self.assertEqual(cfg.forceparse,'True')
-        self.assertEqual(cfg.mymodule.forceparse,'False')
-        self.assertEqual(cfg.jsfiles,['default.js','modernizr.js'])
-        self.assertEqual(cfg.mymodule.jsfiles,['pdfviewer.js','zepto.js'])
-        self.assertEqual(cfg.mymodule.arbitrary.nesting.depth, 'works')
-        with self.assertRaises(AttributeError):
-            cfg.lastrun
-        self.assertEqual(cfg.mymodule.lastrun,"2012-09-18T15:41:00")
+        self._test_subsections(cfg,
+                               int_type=str,
+                               bool_type=str,
+                               list_type=list,
+                               date_type=str,
+                               datetime_type=str)
 
 
 class TestTyping(unittest.TestCase):
 
     def test_typed_inifile(self):
-        types = {'datadir':str,
+        types = {'home':str,
                  'processes':int,
-                 'forceparse':bool,
-                 'jsfiles':list, 
-                 'mymodule':{'forceparse':bool,
+                 'force':bool,
+                 'extra':list, 
+                 'mymodule':{'force':bool,
                              'lastrun':datetime}}
 
         cfg = LayeredConfig(Defaults(types),INIFile("ferenda.ini"))
         # cfg = LayeredConfig(inifile="ferenda.ini")
-        self.assertEqual(cfg.datadir,'mydata')
-        self.assertIs(type(cfg.datadir),str)
+        self.assertEqual(cfg.home,'mydata')
+        self.assertIs(type(cfg.home),str)
         self.assertEqual(cfg.processes,4)
         self.assertIs(type(cfg.processes),int)
-        self.assertEqual(cfg.forceparse,True)
-        self.assertIs(type(cfg.forceparse),bool)
-        self.assertEqual(cfg.jsfiles,['default.js','modernizr.js'])
-        self.assertIs(type(cfg.jsfiles),list)
-        self.assertEqual(cfg.mymodule.forceparse,False)
-        self.assertIs(type(cfg.mymodule.forceparse),bool)
+        self.assertEqual(cfg.force,True)
+        self.assertIs(type(cfg.force),bool)
+        self.assertEqual(cfg.extra,['foo','bar'])
+        self.assertIs(type(cfg.extra),list)
+        self.assertEqual(cfg.mymodule.force,False)
+        self.assertIs(type(cfg.mymodule.force),bool)
         self.assertEqual(cfg.mymodule.lastrun,datetime(2012,9,18,15,41,0))
         self.assertIs(type(cfg.mymodule.lastrun),datetime)
 
         
     def test_typed_commandline(self):
-        types = {'datadir':str,
+        types = {'home':str,
                  'processes':int,
-                 'forceparse':bool,
-                 'jsfiles':list, 
-                 'mymodule':{'forceparse':bool,
+                 'force':bool,
+                 'extra':list, 
+                 'mymodule':{'force':bool,
                              'lastrun':datetime}
                  }
 
-        cmdline = ['--datadir=mydata',
+        cmdline = ['--home=mydata',
                    '--processes=4',
-                   '--forceparse=True',
-                   '--jsfiles=default.js',
-                   '--jsfiles=modernizr.js',
-                   '--mymodule-forceparse=False',
+                   '--force=True',
+                   '--extra=foo',
+                   '--extra=bar',
+                   '--mymodule-force=False',
                    '--mymodule-lastrun=2012-09-18 15:41:00']
         cfg = LayeredConfig(Defaults(types), Commandline(cmdline))
-        self.assertEqual(cfg.datadir,'mydata')
-        self.assertIs(type(cfg.datadir),str)
+        self.assertEqual(cfg.home,'mydata')
+        self.assertIs(type(cfg.home),str)
         self.assertEqual(cfg.processes,4)
         self.assertIs(type(cfg.processes),int)
-        self.assertEqual(cfg.forceparse,True)
-        self.assertIs(type(cfg.forceparse),bool)
-        self.assertEqual(cfg.jsfiles,['default.js','modernizr.js'])
-        self.assertIs(type(cfg.jsfiles),list)
-        self.assertEqual(cfg.mymodule.forceparse,False)
-        self.assertIs(type(cfg.mymodule.forceparse),bool)
+        self.assertEqual(cfg.force,True)
+        self.assertIs(type(cfg.force),bool)
+        self.assertEqual(cfg.extra,['foo','bar'])
+        self.assertIs(type(cfg.extra),list)
+        self.assertEqual(cfg.mymodule.force,False)
+        self.assertIs(type(cfg.mymodule.force),bool)
         self.assertEqual(cfg.mymodule.lastrun,datetime(2012,9,18,15,41,0))
         self.assertIs(type(cfg.mymodule.lastrun),datetime)
 
@@ -260,14 +273,14 @@ class TestTyping(unittest.TestCase):
 
     def test_typed_commandline_cascade(self):
         # the test here is that _load_commandline must use _type_value property.
-        defaults = {'forceparse':True,
+        defaults = {'force':True,
                     'lastdownload':datetime,
                     'mymodule': {}}
-        cmdline = ['--mymodule-forceparse=False']
+        cmdline = ['--mymodule-force=False']
         cfg = LayeredConfig(Defaults(defaults), Commandline(cmdline), cascade=True)
         subconfig = getattr(cfg, 'mymodule')
-        self.assertIs(type(subconfig.forceparse), bool)
-        self.assertEqual(subconfig.forceparse, False)
+        self.assertIs(type(subconfig.force), bool)
+        self.assertEqual(subconfig.force, False)
         # test typed config values that have no actual value
         
         self.assertEqual(cfg.lastdownload, None)
@@ -284,29 +297,29 @@ class TestLayered(unittest.TestCase):
         self.assertEqual(cfg.loglevel, 'INFO')
         cfg = LayeredConfig(Defaults(defaults), INIFile("ferenda.ini"), Commandline(cmdline))
         self.assertEqual(cfg.loglevel, 'DEBUG')
-        self.assertEqual(['loglevel', 'datadir', 'processes', 'forceparse', 'jsfiles'], list(cfg))
+        self.assertEqual(['loglevel', 'home', 'processes', 'force', 'extra'], list(cfg))
 
 
 
     def test_layered_subsections(self):
         defaults = OrderedDict((('force',False),
-                                ('datadir','thisdata'),
+                                ('home','thisdata'),
                                 ('loglevel','INFO')))
-        cmdline=['--mymodule-datadir=thatdata','--mymodule-force'] # 
+        cmdline=['--mymodule-home=thatdata','--mymodule-force'] # 
         cfg = LayeredConfig(Defaults(defaults), Commandline(cmdline), cascade=True)
         self.assertEqual(cfg.mymodule.force, True)
-        self.assertEqual(cfg.mymodule.datadir, 'thatdata')
+        self.assertEqual(cfg.mymodule.home, 'thatdata')
         self.assertEqual(cfg.mymodule.loglevel, 'INFO')
 
         defaults = {'mymodule':defaults}
-        cmdline=['--datadir=thatdata','--force'] # 
+        cmdline=['--home=thatdata','--force'] # 
         cfg = LayeredConfig(Defaults(defaults), Commandline(cmdline), cascade=True)
         self.assertEqual(cfg.mymodule.force, True)
-        self.assertEqual(cfg.mymodule.datadir, 'thatdata')
+        self.assertEqual(cfg.mymodule.home, 'thatdata')
         self.assertEqual(cfg.mymodule.loglevel, 'INFO')
 
 
-        self.assertEqual(['force', 'datadir', 'loglevel'], list(cfg.mymodule))
+        self.assertEqual(['force', 'home', 'loglevel'], list(cfg.mymodule))
 
 
 class TestModifications(unittest.TestCase):
@@ -320,9 +333,9 @@ class TestModifications(unittest.TestCase):
 
     def test_modified_subsections(self):
         defaults = {'force':False,
-                    'datadir':'thisdata',
+                    'home':'thisdata',
                     'loglevel':'INFO'}
-        cmdline=['--mymodule-datadir=thatdata','--mymodule-force'] # 
+        cmdline=['--mymodule-home=thatdata','--mymodule-force'] # 
         cfg = LayeredConfig(Defaults(defaults), INIFile("ferenda.ini"), Commandline(cmdline), cascade=True)
         cfg.mymodule.loglevel = 'ERROR'
 
@@ -333,16 +346,16 @@ class TestModifications(unittest.TestCase):
         # entire config file
         LayeredConfig.write(cfg.mymodule)
         want = """[__root__]
-datadir = mydata
+home = mydata
 processes = 4
 loglevel = INFO
-forceparse = True
-jsfiles = ['default.js','modernizr.js']
+force = True
+extra = ['foo','bar']
 
 [mymodule]
 loglevel = DEBUG
-forceparse = False
-jsfiles = ['pdfviewer.js','zepto.js']
+force = False
+        extra = ['foo','baz']
 lastrun = 2013-09-18 15:41:00
 
 """
