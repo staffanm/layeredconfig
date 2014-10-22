@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 
+from abc import ABCMeta, abstractmethod
 import itertools
 import os
 import sys
 import logging
 from collections import defaultdict
+from datetime import date, datetime
+import ast
+import json
 
 from six import text_type as str
 from six import binary_type as bytes
@@ -16,23 +20,28 @@ except ImportError: # pragma: no cover
     # if on python 2.6
     from ordereddict import OrderedDict
 
-class ConfigSource(object):
-    def register_conversion(type, func):
-        """
-        >>> def convert_complex(s):
-        ...     return complex(s)
-        >>> ConfigSource.register_conversion(complex, convert_complex)
-        >>> # now type conversion can handle complex numbers
-        """
-        pass
 
+class ConfigSource():
+    __metaclass__ = ABCMeta
+#    def register_conversion(type, func):
+#        """
+#        >>> def convert_complex(s):
+#        ...     return complex(s)
+#        >>> ConfigSource.register_conversion(complex, convert_complex)
+#        >>> # now type conversion can handle complex numbers
+#        """
+#        pass
+
+    @abstractmethod
     def typed(self, key):
-        return False
+        return
 
-    def _type_value(self, key, value):
-        """Find appropriate method/class constructor to convert a
-           string value to the correct type IF we know the correct
-           type."""
+    # @abstractmethod
+    def typevalue(self, key, value):
+        """Given a option key and an untyped string, convert that string to
+        the type that our version of key has.
+
+        """
 
         def boolconvert(value):
             # not all bools should be converted, see test_typed_commandline
@@ -56,33 +65,24 @@ class ConfigSource(object):
 
         def datetimeconvert(value):
             try:
-                return datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+                return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
             except ValueError:
-                return datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+                return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
 
-        # find the appropriate defaults object. In the case of
-        # cascading, could be any parent that has a key key.
-        defaults = self._defaults  # base case
-        if self._cascade:
-            cfg_obj = self
-            while cfg_obj is not None:
-                if key in cfg_obj._defaults:
-                    defaults = cfg_obj._defaults
-                    break  # done!
-                if hasattr(cfg_obj, '_parent'):
-                    cfg_obj = cfg_obj._parent
-                else:
-                    cfg_obj = None
+        def dateconvert(value):
+            try:
+                return datetime.strptime(value, "%Y-%m-%d").date
+            except ValueError:
+                return datetime.strptime(value, "%Y-%m-%d").date
 
-        if key in defaults:
-            if type(defaults[key]) == type:
-                # print("Using class for %s" % key)
-                t = defaults[key]
-            else:
-                # print("Using instance for %s" % key)
-                t = type(defaults[key])
+        # self.get(key) should never fail
+        default = self.get(key)
+        if type(default) == type:
+            # print("Using class for %s" % key)
+            t = default
         else:
-            t = str
+            # print("Using instance for %s" % key)
+            t = type(type(default))
 
         if t == bool:
             t = boolconvert
@@ -95,15 +95,69 @@ class ConfigSource(object):
         # print("Converting %r to %r" % (value,t(value)))
         return t(value)
 
+    @abstractmethod
     def subsections(self):
-        return []
+        return
+
+    @abstractmethod
+    def subsection(self, key):
+        return
+
+    @abstractmethod
+    def has(self, key):
+        return
+
+    @abstractmethod
+    def get(self, key):
+        return
+
+    @abstractmethod
+    def set(self, key):
+        return
+
+    @abstractmethod
+    def keys(self):
+        return
+        
+
+# this should possibly be a abstract class as well
+class DictSource(ConfigSource):
+    def subsections(self):
+        for (k, v) in self.source.items():
+            if isinstance(v, dict):
+                yield k
+
+    def keys(self):
+        for (k, v) in self.source.items():
+            if not isinstance(v, dict):
+                yield k
 
     def subsection(self, key):
-        raise KeyError("No subsection named '%s'" % key)
+        return Defaults(self.source[key])
+
+    def typed(self, key):
+        return True
+
+    def has(self, key):
+        return key in self.source
+
+    def get(self, key):
+        return self.source[key]
+
+    def set(self, key, value):
+        self.source[key] = value
+       
 
 
-class Defaults(ConfigSource):
-    def __init__(self, defaults={}, writable=False, identifier="defaults"):
+# maybe a common ABC for INIFile, JSONFile, PListFile, YAMLFile? Once
+# we figure out what file-backed sources have in commons wrt saving
+# etc
+#
+# class FileSource(ConfigSource):
+#     pass
+
+class Defaults(DictSource):
+    def __init__(self, defaults={}, identifier="defaults"):
         """
         This source is initialized with a dict.
 
@@ -114,30 +168,26 @@ class Defaults(ConfigSource):
         """
         self.source = defaults
 
-    def subsections(self):
-        for (k, v) in self.source.items():
-            if isinstance(v, dict):
-                yield k
 
-    def subsection(self, key):
-        return Defaults(self.source[key])
+class JSONFile(DictSource):
+
+    def __init__(self, jsonfile, writable=True, identifier="defaults"):
+        """
+
+        :param jsonfile: A dict with configuration keys and values. If
+                             any values are dicts, these are turned into
+                             nested config objects.
+        :type defaults: dict
+        """
+        with open(jsonfile) as fp:
+            self.source = json.load(fp)
+        self.jsonfile = jsonfile
 
     def typed(self, key):
-        return True
+        # if the value is anything other than a string, we can be sure
+        # that it contains useful type information.
+        return not isinstance(self.get(key), str)
 
-    def has(self, k):
-        return k in self.source
-
-    def get(self, k):
-       return self.source[k]
-
-    def set(self, k, v):
-        self.source[k] = v
-       
-    def __iter__(self):
-        return self.source.__iter__()  # or "for k in self.source: yield k"
-        # what about subsections?
-        
 
 class INIFile(ConfigSource):
     def __init__(self,
@@ -172,6 +222,10 @@ class INIFile(ConfigSource):
             self.sectionkey = defaultsection
         self.defaultsection = defaultsection
 
+    def typed(self, key):
+        # INI files carry no intrinsic type information
+        return False
+        
     def subsections(self):
         # self.source may be None if we provided the path to a
         # nonexistent inifile (this should probably throw an exception
@@ -196,49 +250,69 @@ class INIFile(ConfigSource):
     def set(self, key, value):
         self.source.set(self.sectionkey, key, value)
         
-    def __iter__(self):
+    def keys(self):
         if self.source:
             for k in self.source.options(self.sectionkey):
                 yield k
 
-#        if self._configparser.has_section(rootsection):
-#            self._load_inifile_section(rootsection)
-#
-#
-#        for sectionkey in self._configparser.sections():
-#
-#            # Do we have a LayeredConfig object for sectionkey already?
-#            if sectionkey not in self._subsections:
-#                self._subsections[
-#                    sectionkey] = LayeredConfig(cascade=self._cascade)
-#                self._subsections[sectionkey]._sectionkey = sectionkey
-#                self._subsections[sectionkey]._parent = self
-#
-#            if self._subsections[sectionkey]._configparser is None:
-#                self._subsections[
-#                    sectionkey]._configparser = self._configparser
-#
-#            self._subsections[sectionkey]._load_inifile_section(sectionkey)
-#        # return cfgparser
-#
-#    def _load_inifile_section(self, sectionname):
-#        for (key, value) in self._configparser.items(sectionname):
-#            self._inifile[key] = self._type_value(key, value)
-
-
-
-class JSONFile(ConfigSource):
-    def __init__(self, jsonfile=None, identifier="jsonfile"):
-        pass
-
 
 class Environment(ConfigSource):
-    def __init__(self, environ=os.environ, prefix="", lowerize=True, identifier="environment"):
-        self.config = None
+    def __init__(self,
+                 environ=os.environ,
+                 prefix="",
+                 sectionsep="_",
+                 identifier="environment"):
+        self.source = environ
+        self.prefix = prefix
+        self.sectionsep = sectionsep
+
+    # used by both keys and subsections, but in different ways
+    def _internalkeys(self):
+        return  [x.lower()[len(self.prefix):] for x in self.source.keys()]
+        
+    def keys(self):
+        for x in self._internalkeys():
+            if self.sectionsep not in x:
+                yield x
+
+    def has(self, key):
+        # reverse the prefix/lowerize stuff
+        k = self.prefix + key.upper()
+        return k in self.source
+
+    def get(self, key):
+        k = self.prefix + key.upper()
+        return self.source[k]
+
+    def set(self, key, val):
+        k = self.prefix + key.upper()
+        self.source[k] = val
+
+    def typed(self, key):
+        return False
+
+    def subsections(self):
+        yielded = set()
+        for x in self._internalkeys():
+            if self.sectionsep in x:
+                section = x.split(self.sectionsep)[0]
+                if section not in yielded:
+                    yield(section)
+                    yielded.add(section)
+
+    def subsection(self, key):
+        s = key.upper() + self.sectionsep
+        newenviron = dict([(k.replace(s,"", 1), v) for k, v in self.source.items() if s in k])
+        return Environment(newenviron,
+                           prefix=self.prefix,
+                           sectionsep=self.sectionsep)
 
 
 class Commandline(ConfigSource):
-    def __init__(self, commandline=sys.argv, sectionsep="-", identifier="commandline"):
+    def __init__(self,
+                 commandline=sys.argv,
+                 sectionsep="-",
+                 identifier="commandline"):
         """
         Load configuration from command line options.
         
@@ -278,10 +352,6 @@ class Commandline(ConfigSource):
     def _load_commandline_part(self, parts, value, sectionargvs):
         if len(parts) == 1:
             key = parts[0]
-            
-            # if type(value) != bool:  # bools are created implicitly for value-less options
-            #     value = self._type_value(key, value)
-            # create a new value, or append to an existing list?
             if key in self.source:
                 if not isinstance(self.source[key], list):
                     self.source[key] = [self.source[key]]
@@ -313,9 +383,14 @@ class Commandline(ConfigSource):
     def set(self, k, v):
         self.source[k] = v
        
-    def __iter__(self):
-        return self.source.__iter__()  # or "for k in self.source: yield k"
+    def keys(self):
+        return self.source.keys()  # or "for k in self.source: yield k"
         # what about subsections?
+
+    def typed(self, key):
+        # if the value is anything other than a string, we can be sure
+        # that it contains useful type information (eg bool, list)
+        return not isinstance(self.get(key), str)
 
 
 # requires PyYaml
@@ -476,8 +551,11 @@ class LayeredConfig(object):
 
         if self._cascade and self._parent:
             iterables.append(self._parent)
-        
-        for k in itertools.chain(*self._sources):
+
+        # FIXME: sources are no longer iterables, need to call their
+        # keys() methods (which may return lists or generators)
+        iterables = [x.keys() for x in self._sources]
+        for k in itertools.chain(*iterables):
             if k not in l:
                 l.append(k)
                 yield k
@@ -490,14 +568,14 @@ class LayeredConfig(object):
         if name in self._subsections:
             return self._subsections[name]
 
-        # find a source that can provide typeinfo for this. In which
-        # order? same as priority? yeah that makes sense.
+        # find a source that can provide typeinfo for this key 
         typesource = None
         for source in reversed(self._sources):
             if source.has(name) and source.typed(name):
                 typesource = source
                 break
 
+        # find the appropriate value in the highest-priority source
         for source in reversed(self._sources):
             if source.has(name):
                 if source.typed(name) or not typesource:
