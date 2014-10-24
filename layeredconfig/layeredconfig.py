@@ -16,7 +16,7 @@ from six.moves import configparser
 
 try:
     from collections import OrderedDict
-except ImportError: # pragma: no cover
+except ImportError:  # pragma: no cover
     # if on python 2.6
     from ordereddict import OrderedDict
 
@@ -37,6 +37,7 @@ class ConfigSource():
         return
 
     # @abstractmethod
+    # should this be called "coerce", "cast" or something similar
     def typevalue(self, key, value):
         """Given a option key and an untyped string, convert that string to
         the type that our version of key has.
@@ -53,15 +54,22 @@ class ConfigSource():
                 return value
             
         def listconvert(value):
-            # this function is called with both string represenations
-            # of entire lists and simple (unquoted) strings. The
+            # this function might be called with both string
+            # represenations of entire lists and simple (unquoted)
+            # strings. String representations come in two flavours,
+            # the (legacy/deprecated) python literal (eg "['foo',
+            # 'bar']") and the simple (eg "foo, bar") The
             # ast.literal_eval handles the first case, and if the
-            # value can't be parsed as a python expression, it is
-            # returned verbatim (not wrapped in a list, for reasons)
+            # value can't be parsed as a python expression, the second
+            # way is attempted. If both fail, it is returned verbatim
+            # (not wrapped in a list, for reasons)
             try:
                 return ast.literal_eval(value)
             except (SyntaxError, ValueError):
-                return value
+                if "," in value:
+                    return [x.strip() for x in value.split(",")]
+                else:
+                    return value
 
         def datetimeconvert(value):
             try:
@@ -71,9 +79,9 @@ class ConfigSource():
 
         def dateconvert(value):
             try:
-                return datetime.strptime(value, "%Y-%m-%d").date
+                return datetime.strptime(value, "%Y-%m-%d").date()
             except ValueError:
-                return datetime.strptime(value, "%Y-%m-%d").date
+                return datetime.strptime(value, "%Y-%m-%d").date()
 
         # self.get(key) should never fail
         default = self.get(key)
@@ -82,7 +90,7 @@ class ConfigSource():
             t = default
         else:
             # print("Using instance for %s" % key)
-            t = type(type(default))
+            t = type(default)
 
         if t == bool:
             t = boolconvert
@@ -139,7 +147,8 @@ class DictSource(ConfigSource):
         return True
 
     def has(self, key):
-        return key in self.source
+        # should has return true for types or only for real values?
+        return key in self.source and not isinstance(self.source[key], type)
 
     def get(self, key):
         return self.source[key]
@@ -390,7 +399,10 @@ class Commandline(ConfigSource):
     def typed(self, key):
         # if the value is anything other than a string, we can be sure
         # that it contains useful type information (eg bool, list)
-        return not isinstance(self.get(key), str)
+        try:
+            return not isinstance(self.get(key), str)
+        except:
+            return Falseq
 
 
 # requires PyYaml
@@ -497,6 +509,7 @@ class LayeredConfig(object):
                               cascade=self._cascade,
                               writable=self._writable)
             c._sectionkey = k
+            c._parent = self
             self._subsections[k] = c
             
         # cascade=False, writable=True,
@@ -568,24 +581,41 @@ class LayeredConfig(object):
         if name in self._subsections:
             return self._subsections[name]
 
-        # find a source that can provide typeinfo for this key 
-        typesource = None
-        for source in reversed(self._sources):
-            if source.has(name) and source.typed(name):
-                typesource = source
-                break
-
+        found = False
         # find the appropriate value in the highest-priority source
         for source in reversed(self._sources):
             if source.has(name):
-                if source.typed(name) or not typesource:
-                    return source.get(name)
-                else:
+                found = True
+                break
+
+        if found:
+            if source.typed(name):
+                return source.get(name)
+            else:
+
+                # we need to find a typesource for this value. 
+                done = False
+                this = self
+                while not done:
+                    for typesource in reversed(this._sources):
+                        if typesource.typed(name):
+                            done = True
+                            break
+                    if not done and self._cascade and this._parent:
+                        # Iterate up the parent chain to find it.
+                        this = this._parent
+                    else:
+                        done = True
+
+                if typesource.typed(name):
                     return typesource.typevalue(name, source.get(name))
-
-        if self._cascade and self._parent:
-            return self._parent.__getattribute(name)
-
+                else:
+                    # we can't type this data, return as-is
+                    return source.get(name)
+        else:
+            if self._cascade and self._parent:
+                return self._parent.__getattribute__(name)
+        
         raise AttributeError("Configuration key %s doesn't exist" % name)
 
     def __setattr__(self, name, value):

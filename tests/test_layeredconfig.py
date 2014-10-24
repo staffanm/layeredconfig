@@ -13,12 +13,17 @@ import logging
 import unittest
 from six import text_type as str
 from datetime import date, datetime
+try:
+    from collections import OrderedDict
+except ImportError:  # pragma: no cover
+    # if on python 2.6
+    from ordereddict import OrderedDict
 
 # The system under test
 from layeredconfig import LayeredConfig, Defaults, INIFile, JSONFile, Environment, Commandline
 
 
-class TestHelper(object):
+class TestConfigSourceHelper(object):
     # First, a number of straightforward tests for any
     # ConfigSource-derived object. Concrete test classes should set up
     # self.simple and self.complex instances to match these.
@@ -61,6 +66,8 @@ class TestHelper(object):
         self.assertEqual(self.simple.get("lastrun"),
                          datetime(2014, 10, 15, 14, 32, 7))
 
+
+class TestLayeredConfigHelper(object):
     # Then, two validation helpers for checking a complete
     # LayeredConfig object, where validation can be performed
     # different depending on the abilities of the source (eg. typing)
@@ -131,10 +138,12 @@ class TestHelper(object):
         else:
             self.assertEqual(cfg.mymodule.expires, date(2014, 10, 15))
 
+
 # common helper
-class TestINIFileHelper(TestHelper):
+class TestINIFileHelper(object):
 
     def setUp(self):
+        super(TestINIFileHelper, self).setUp()
         with open("simple.ini", "w") as fp:
             fp.write("""
 [__root__]
@@ -164,11 +173,12 @@ unique = True
 """)
 
     def tearDown(self):
+        super(TestINIFileHelper, self).tearDown()
         os.unlink("simple.ini")
         os.unlink("complex.ini")
 
 
-class TestDefaults(unittest.TestCase, TestHelper):
+class TestDefaults(unittest.TestCase, TestConfigSourceHelper, TestLayeredConfigHelper):
 
     simple = Defaults({'home': 'mydata',
                        'processes': 4,
@@ -201,13 +211,14 @@ class TestDefaults(unittest.TestCase, TestHelper):
         self._test_subsections(cfg)
 
 
-class TestINIFile(TestINIFileHelper, unittest.TestCase):
+class TestINIFile(TestINIFileHelper, unittest.TestCase,
+                  TestConfigSourceHelper,
+                  TestLayeredConfigHelper):
 
     def setUp(self):
         super(TestINIFile, self).setUp()
         self.simple = INIFile("simple.ini")
         self.complex = INIFile("complex.ini")
-
 
     # Overrides of TestHelper.test_get, .test_typed and
     # .test_subsection_nested due to limitations of INIFile
@@ -254,8 +265,9 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase):
         cfg = LayeredConfig(INIFile("nonexistent.ini"))
         self.assertEqual([], list(cfg))
 
-        
-class TestJSONFile(unittest.TestCase, TestHelper):
+
+class TestJSONFile(unittest.TestCase, TestConfigSourceHelper,
+                   TestLayeredConfigHelper):
 
     def setUp(self):
         with open("simple.json", "w") as fp:
@@ -307,8 +319,8 @@ class TestJSONFile(unittest.TestCase, TestHelper):
             if key in ("processes", "force", "extra"):
                 self.assertTrue(self.simple.typed(key))
             else:
-                self.assertFalse(self.simple.typed(key))                
-        
+                self.assertFalse(self.simple.typed(key))
+
     def test_jsonfile(self):
         cfg = LayeredConfig(self.simple)
         self._test_mainsection(cfg,
@@ -328,7 +340,9 @@ class TestJSONFile(unittest.TestCase, TestHelper):
                                datetime_type=str,
                                arbitrary_nesting=True)
 
-class TestCommandline(unittest.TestCase, TestHelper):
+
+class TestCommandline(unittest.TestCase, TestConfigSourceHelper,
+                      TestLayeredConfigHelper):
 
     simple = Commandline(['--home=mydata',
                           '--processes=4',
@@ -387,7 +401,7 @@ class TestCommandline(unittest.TestCase, TestHelper):
                                datetime_type=str)
 
 
-class TestEnvironment(unittest.TestCase, TestHelper):
+class TestEnvironment(unittest.TestCase, TestConfigSourceHelper, TestLayeredConfigHelper):
 
     simple = Environment({'MYAPP_HOME': 'mydata',
                           'MYAPP_PROCESSES': '4',
@@ -437,13 +451,12 @@ class TestEnvironment(unittest.TestCase, TestHelper):
                                date_type=str,
                                datetime_type=str)
 
-class TestTyping(unittest.TestCase, TestHelper):
+
+class TestTyping(unittest.TestCase, TestLayeredConfigHelper):
     types = {'home': str,
              'processes': int,
              'force': bool,
              'extra': list,
-             'expires': date,
-             'lastrun': datetime,
              'mymodule': {'force': bool,
                           'extra': list,
                           'expires': date,
@@ -454,17 +467,16 @@ class TestTyping(unittest.TestCase, TestHelper):
     def test_typed_commandline(self):
         cmdline = ['--home=mydata',
                    '--processes=4',
-                   '--force=True',  # results in string, not bool
+                   '--force=True',
                    '--extra=foo',
                    '--extra=bar',
-                   # '--expires=2014-10-15',
-                   # '--lastrun=2014-10-15 14:32:07',
                    '--implicitboolean',
                    '--mymodule-force=False',
                    '--mymodule-extra=foo',
                    '--mymodule-extra=baz',
                    '--mymodule-expires=2014-10-15',
-                   '--mymodule-arbitrary-nesting-depth=works']
+                   '--mymodule-arbitrary-nesting-depth=works',
+                   '--extramodule-unique']
         cfg = LayeredConfig(Defaults(self.types), Commandline(cmdline))
         self._test_subsections(cfg)
         self.assertTrue(cfg.implicitboolean)
@@ -478,27 +490,44 @@ class TestTyping(unittest.TestCase, TestHelper):
         self.assertEqual(cfg.logfile, "out.log")
 
     def test_typed_commandline_cascade(self):
-        # the test here is that _load_commandline must use _type_value property.
-        defaults = {'force':True,
-                    'lastdownload':datetime,
+        # the test here is that _load_commandline must use _type_value
+        # property.
+        defaults = {'force': True,
+                    'lastdownload': datetime,
                     'mymodule': {}}
         cmdline = ['--mymodule-force=False']
-        cfg = LayeredConfig(Defaults(defaults), Commandline(cmdline), cascade=True)
+        cfg = LayeredConfig(Defaults(defaults), Commandline(cmdline),
+                            cascade=True)
         subconfig = getattr(cfg, 'mymodule')
         self.assertIs(type(subconfig.force), bool)
         self.assertEqual(subconfig.force, False)
-        # test typed config values that have no actual value
-        
-        self.assertEqual(cfg.lastdownload, None)
-        self.assertEqual(subconfig.lastdownload, None)
+
+        # test typed config values that have no actual value. Since
+        # they have no value, they should raise AtttributeError
+        with self.assertRaises(AttributeError):
+            self.assertEqual(cfg.lastdownload, None)
+        with self.assertRaises(AttributeError):
+            self.assertEqual(subconfig.lastdownload, None)
 
 
-class TestTypingINIFile(TestINIFileHelper, TestTyping):
+class TestTypingINIFile(TestINIFileHelper,
+                        unittest.TestCase,
+                        TestLayeredConfigHelper):
+    
+    types = {'home': str,
+             'processes': int,
+             'force': bool,
+             'extra': list,
+             'mymodule': {'force': bool,
+                          'extra': list,
+                          'expires': date,
+                          'lastrun': datetime,
+                      }
+             }
     
     def test_typed_inifile(self):
-        # FIXME: create inifile
-        cfg = LayeredConfig(Defaults(self.types), INIFile("ferenda.ini"))
-        self._test_subsections(cfg)
+        cfg = LayeredConfig(Defaults(self.types), INIFile("complex.ini"))
+        self._test_subsections(cfg, arbitrary_nesting=False)
 
 
 class TestLayered(unittest.TestCase):
