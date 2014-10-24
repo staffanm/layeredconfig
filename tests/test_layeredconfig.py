@@ -532,17 +532,23 @@ class TestTypingINIFile(TestINIFileHelper,
         self._test_subsections(cfg, arbitrary_nesting=False)
 
 
-class TestLayered(unittest.TestCase):
+class TestLayered(TestINIFileHelper, unittest.TestCase):
     def test_layered(self):
-        defaults = {'loglevel':'ERROR'}
-        cmdline = ['--loglevel=DEBUG']
+        defaults = {'home':'someplace'}
+        cmdline = ['--home=anotherplace']
+        env = {'MYAPP_HOME': 'yourdata'}
         cfg = LayeredConfig(Defaults(defaults))
-        self.assertEqual(cfg.loglevel, 'ERROR')
-        cfg = LayeredConfig(Defaults(defaults), INIFile("ferenda.ini"))
-        self.assertEqual(cfg.loglevel, 'INFO')
-        cfg = LayeredConfig(Defaults(defaults), INIFile("ferenda.ini"), Commandline(cmdline))
-        self.assertEqual(cfg.loglevel, 'DEBUG')
-        self.assertEqual(['loglevel', 'home', 'processes', 'force', 'extra'], list(cfg))
+        self.assertEqual(cfg.home, 'someplace')
+        cfg = LayeredConfig(Defaults(defaults), INIFile("simple.ini"))
+        self.assertEqual(cfg.home, 'mydata')
+        cfg = LayeredConfig(Defaults(defaults), INIFile("simple.ini"),
+                            Environment(env, prefix="MYAPP_"))
+        self.assertEqual(cfg.home, 'yourdata')
+        cfg = LayeredConfig(Defaults(defaults), INIFile("simple.ini"),
+                            Environment(env, prefix="MYAPP_"),
+                            Commandline(cmdline))
+        self.assertEqual(cfg.home, 'anotherplace')
+        self.assertEqual(['home', 'processes', 'force', 'extra', 'expires', 'lastrun'], list(cfg))
 
 
 
@@ -556,8 +562,16 @@ class TestLayered(unittest.TestCase):
         self.assertEqual(cfg.mymodule.home, 'thatdata')
         self.assertEqual(cfg.mymodule.loglevel, 'INFO')
 
+        # second test is more difficult: the lower-priority Defaults
+        # source only contains a subsection, while the higher-priority
+        # Commandline source contains no such subsection. Our
+        # sub-LayeredConfig object will only have a Defaults source,
+        # not a Commandline source (which will cause the
+        # __getattribute__ lookup_resource to look in the Defaults
+        # object in the sub-LayeredConfig object, unless we do
+        # something smart.
         defaults = {'mymodule':defaults}
-        cmdline=['--home=thatdata','--force'] # 
+        cmdline=['--home=thatdata','--force'] 
         cfg = LayeredConfig(Defaults(defaults), Commandline(cmdline), cascade=True)
         self.assertEqual(cfg.mymodule.force, True)
         self.assertEqual(cfg.mymodule.home, 'thatdata')
@@ -617,23 +631,32 @@ unique = True
         LayeredConfig.write(cfg)
 
 
-class TestAccessors(unittest.TestCase):
+class TestAccessors(TestINIFileHelper, unittest.TestCase):
 
     def test_set(self):
         # a value is set in a particular underlying source, and the
         # dirty flag isn't set.
         cfg = LayeredConfig(INIFile("simple.ini"))
-        LayeredConfig.set(cfg, 'lastrun', datetime(2013, 9, 18, 15, 41, 0),
-                          "defaults")
-        self.assertEqual(datetime(2013, 9, 18, 15, 41, 0), cfg.lastrun)
-        self.assertFalse(cfg._inifile_dirty)
+        LayeredConfig.set(cfg, 'expires', date(2013, 9, 18),
+                          "inifile")
+        # NOTE: For this config, where no type information is
+        # available for key 'expires', INIFile.set will convert the
+        # date object to a string, at which point typing is lost.
+        # Therefore this commmented-out test will fail
+        # self.assertEqual(date(2013, 9, 18), cfg.expires)
+        self.assertEqual("2013-09-18", cfg.expires)
+        self.assertFalse(cfg._sources[0].dirty)
 
     def test_get(self):
         cfg = LayeredConfig(Defaults({'codedefaults': 'yes',
                                       'force': False,
                                       'home': '/usr/home'}),
                             INIFile('simple.ini'))
-        # and then do a bunch of get()
+        # and then do a bunch of get() calls with optional fallbacks
+        self.assertEqual("yes", LayeredConfig.get(cfg, "codedefaults"))
+        self.assertEqual("mydata", LayeredConfig.get(cfg, "home"))
+        self.assertEqual(None, LayeredConfig.get(cfg, "nonexistent"))
+        self.assertEqual("NO!", LayeredConfig.get(cfg, "nonexistent", "NO!"))
 
 if __name__ == '__main__':
     unittest.main()

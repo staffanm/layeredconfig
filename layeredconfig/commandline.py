@@ -12,7 +12,7 @@ class Commandline(ConfigSource):
     def __init__(self,
                  commandline=None,
                  sectionsep="-",
-                 identifier="commandline"):
+                 *args, **kwargs):
         """
         Load configuration from command line options.
         
@@ -29,13 +29,12 @@ class Commandline(ConfigSource):
                            separator.
         :type  sectionsep: str
         """
-        super(Commandline, self).__init__()
+        super(Commandline, self).__init__(*args, **kwargs)
         if not commandline:
             commandline = sys.argv
         self.source = OrderedDict()
         self.sectionargvs = defaultdict(list)
         self.sectionsep = sectionsep
-        self.identifier = identifier
         for arg in commandline:
             if isinstance(arg, bytes):
                 # FIXME: Find out proper way of finding the encoding
@@ -74,7 +73,9 @@ class Commandline(ConfigSource):
         return self.sectionargvs.keys()
         
     def subsection(self, key):
-        return Commandline(self.sectionargvs[key], )
+        return Commandline(self.sectionargvs[key],
+                           parent=self,
+                           identifier=self.identifier)
 
     def has(self, k):
         return k in self.source

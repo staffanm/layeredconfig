@@ -15,7 +15,7 @@ class INIFile(ConfigSource):
                  inifilename=None,
                  writable=True, 
                  defaultsection="__root__",
-                 identifier="inifile",
+                 *args,
                  **kwargs):
         """
         :param inifile: The name of a ini-style configuration file. The
@@ -26,9 +26,7 @@ class INIFile(ConfigSource):
                         objects.
         :type inifile: str
         """
-        super(INIFile, self).__init__()
-        self.writable = writable
-        self.identifier = identifier
+        super(INIFile, self).__init__(*args, **kwargs)
         if inifilename:
             if not os.path.exists(inifilename):
                 logging.warn("INI file %s does not exist" % inifilename)
@@ -65,7 +63,8 @@ class INIFile(ConfigSource):
             return [x for x in self.source.sections() if x != self.defaultsection]
 
     def subsection(self, key):
-        return INIFile(config=self.source, section=key)
+        return INIFile(config=self.source, section=key,
+                       parent=self, identifier=self.identifier)
 
     def has(self, key):
         return key in self.source.options(self.sectionkey)
@@ -74,7 +73,8 @@ class INIFile(ConfigSource):
         return str(self.source.get(self.sectionkey, key))
 
     def set(self, key, value):
-        self.source.set(self.sectionkey, key, value)
+        # Note: We need to stringify all values
+        self.source.set(self.sectionkey, key, str(value))
         self.dirty = False
 
     def keys(self):

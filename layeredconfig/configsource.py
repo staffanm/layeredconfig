@@ -6,9 +6,11 @@ class ConfigSource(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod  # but subclasses should still call it through super()
-    def __init__(self):
-        self.identifier = None
-        self.writable = False
+    def __init__(self, *args, **kwargs):
+        self.identifier = kwargs.get('identifier',
+                                     self.__class__.__name__.lower())
+        self.writable = kwargs.get('writable', False)
+        self.parent = kwargs.get('parent')
         self.source = None
 
     @abstractmethod

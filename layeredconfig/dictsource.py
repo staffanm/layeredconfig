@@ -2,8 +2,8 @@
 from . import ConfigSource
 
 class DictSource(ConfigSource):
-    def __init__(self):
-        super(DictSource, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(DictSource, self).__init__(*args, **kwargs)
         self.source = {}
 
     def subsections(self):
@@ -17,7 +17,10 @@ class DictSource(ConfigSource):
                 yield k
 
     def subsection(self, key):
-        return self.__class__(defaults=self.source[key])
+        # Make an object of the correct type
+        return self.__class__(defaults=self.source[key],
+                              parent=self,
+                              identifier=self.identifier)
 
     def typed(self, key):
         return True
@@ -27,7 +30,13 @@ class DictSource(ConfigSource):
         return key in self.source and not isinstance(self.source[key], type)
 
     def get(self, key):
-        return self.source[key]
+        if key in self.source:
+            return self.source[key]
+        elif self.parent:
+            return self.parent.get(key)
+        else:
+            # crash and burn -- we know that key WON'T be in self.source
+            self.source[key]
 
     def set(self, key, value):
         self.source[key] = value

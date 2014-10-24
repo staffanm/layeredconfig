@@ -5,7 +5,7 @@ from . import DictSource
 
 class JSONFile(DictSource):
 
-    def __init__(self, jsonfile=None, writable=True, identifier="defaults", **kwargs):
+    def __init__(self, jsonfile=None, writable=True, *args, **kwargs):
         """
 
         :param jsonfile: A dict with configuration keys and values. If
@@ -13,15 +13,13 @@ class JSONFile(DictSource):
                              nested config objects.
         :type defaults: dict
         """
-        super(JSONFile, self).__init__()
+        super(JSONFile, self).__init__(*args, **kwargs)
         if 'defaults' in kwargs:
             self.source = kwargs['defaults']
         else:
             with open(jsonfile) as fp:
                 self.source = json.load(fp)
             self.jsonfile = jsonfile
-        self.identifier = identifier
-        self.writable = writable
 
     def typed(self, key):
         # if the value is anything other than a string, we can be sure

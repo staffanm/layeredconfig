@@ -5,8 +5,9 @@ class Environment(ConfigSource):
                  environ=None,
                  prefix="",
                  sectionsep="_",
-                 identifier="environment"):
-        super(Environment, self).__init__()
+                 *args,
+                 **kwargs):
+        super(Environment, self).__init__(*args, **kwargs)
         if not environ:
             environ = os.environ
         self.source = environ
@@ -52,4 +53,6 @@ class Environment(ConfigSource):
         newenviron = dict([(k.replace(s,"", 1), v) for k, v in self.source.items() if s in k])
         return Environment(newenviron,
                            prefix=self.prefix,
-                           sectionsep=self.sectionsep)
+                           sectionsep=self.sectionsep,
+                           parent=self,
+                           identifier=self.identifier)

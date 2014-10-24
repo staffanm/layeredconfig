@@ -117,12 +117,12 @@ class LayeredConfig(object):
                 source.save()
 
     @staticmethod
-    def set(config, key, value, source="defaults"):
+    def set(config, key, value, sourceid="defaults"):
         """Sets a value without marking the config file dirty"""
-        src = {'defaults': config._defaults,
-               'inifile': config._inifile,
-               'commandline': config._commandline}[source]
-        src[key] = value
+        for source in config._sources:
+            if source.identifier == sourceid:
+                source.set(key, value)
+        # What if no source is found? We silently ignore...
 
     @staticmethod
     def get(config, key, default=None):
