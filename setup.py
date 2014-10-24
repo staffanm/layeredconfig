@@ -13,7 +13,8 @@ readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 requirements = [
-    'six'
+    'six',
+    'requests'
 ]
 
 if sys.version_info < (2,7,0):
