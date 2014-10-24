@@ -3,8 +3,6 @@
 import itertools
 import logging
 
-from six import text_type as str
-from six import binary_type as bytes
 
 try:
     from collections import OrderedDict

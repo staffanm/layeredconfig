@@ -1,6 +1,7 @@
 import os
 import logging
 from six.moves import configparser
+from six import text_type as str
 try:
     from collections import OrderedDict
 except ImportError:  # pragma: no cover

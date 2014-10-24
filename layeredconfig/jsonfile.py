@@ -1,10 +1,11 @@
 import json
+from six import text_type as str
 
 from . import DictSource
 
 class JSONFile(DictSource):
 
-    def __init__(self, jsonfile, writable=True, identifier="defaults"):
+    def __init__(self, jsonfile=None, writable=True, identifier="defaults", **kwargs):
         """
 
         :param jsonfile: A dict with configuration keys and values. If
@@ -13,9 +14,12 @@ class JSONFile(DictSource):
         :type defaults: dict
         """
         super(JSONFile, self).__init__()
-        with open(jsonfile) as fp:
-            self.source = json.load(fp)
-        self.jsonfile = jsonfile
+        if 'defaults' in kwargs:
+            self.source = kwargs['defaults']
+        else:
+            with open(jsonfile) as fp:
+                self.source = json.load(fp)
+            self.jsonfile = jsonfile
         self.identifier = identifier
         self.writable = writable
 

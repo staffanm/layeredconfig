@@ -490,8 +490,10 @@ class TestTyping(unittest.TestCase, TestLayeredConfigHelper):
         self.assertEqual(cfg.logfile, "out.log")
 
     def test_typed_commandline_cascade(self):
-        # the test here is that _load_commandline must use _type_value
-        # property.
+        # the test here is that __getattribute__ must determine that
+        # subconfig.force is not typed in itself, and fetch type
+        # information from the root of defaults
+
         defaults = {'force': True,
                     'lastdownload': datetime,
                     'mymodule': {}}

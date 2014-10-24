@@ -17,10 +17,7 @@ class DictSource(ConfigSource):
                 yield k
 
     def subsection(self, key):
-        # FIXME: File-based DictSource subclasses (JSONFile and
-        # YAMLFile must be adapted to accept a sub-dict in place of a
-        # filename
-        return self.__class__(self.source[key])
+        return self.__class__(defaults=self.source[key])
 
     def typed(self, key):
         return True
