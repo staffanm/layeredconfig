@@ -9,6 +9,7 @@ from collections import defaultdict
 from datetime import date, datetime
 import ast
 import json
+import plistlib
 
 from six import text_type as str
 from six import binary_type as bytes
@@ -21,16 +22,14 @@ except ImportError:  # pragma: no cover
     from ordereddict import OrderedDict
 
 
-class ConfigSource():
+class ConfigSource(object):
     __metaclass__ = ABCMeta
-#    def register_conversion(type, func):
-#        """
-#        >>> def convert_complex(s):
-#        ...     return complex(s)
-#        >>> ConfigSource.register_conversion(complex, convert_complex)
-#        >>> # now type conversion can handle complex numbers
-#        """
-#        pass
+
+    @abstractmethod  # but subclasses should still call it through super()
+    def __init__(self):
+        self.identifier = None
+        self.writable = False
+        self.source = None
 
     @abstractmethod
     def typed(self, key):
@@ -120,16 +119,19 @@ class ConfigSource():
         return
 
     @abstractmethod
-    def set(self, key):
+    def set(self, key, value):
         return
 
     @abstractmethod
     def keys(self):
         return
-        
 
 # this should possibly be a abstract class as well
 class DictSource(ConfigSource):
+    def __init__(self):
+        super(DictSource, self).__init__()
+        self.source = {}
+
     def subsections(self):
         for (k, v) in self.source.items():
             if isinstance(v, dict):
@@ -166,17 +168,18 @@ class DictSource(ConfigSource):
 #     pass
 
 class Defaults(DictSource):
-    def __init__(self, defaults={}, identifier="defaults"):
+    def __init__(self, defaults, identifier="defaults"):
         """
         This source is initialized with a dict.
 
         :param defaults: A dict with configuration keys and values. If
-                             any values are dicts, these are turned into
-                             nested config objects.
+                         any values are dicts, these are turned into
+                         nested config objects.
         :type defaults: dict
         """
+        super(Defaults, self).__init__()
         self.source = defaults
-
+        self.identifier = identifier
 
 class JSONFile(DictSource):
 
@@ -188,9 +191,12 @@ class JSONFile(DictSource):
                              nested config objects.
         :type defaults: dict
         """
+        super(JSONFile, self).__init__()
         with open(jsonfile) as fp:
             self.source = json.load(fp)
         self.jsonfile = jsonfile
+        self.identifier = identifier
+        self.writable = writable
 
     def typed(self, key):
         # if the value is anything other than a string, we can be sure
@@ -201,10 +207,10 @@ class JSONFile(DictSource):
 class INIFile(ConfigSource):
     def __init__(self,
                  inifilename=None,
-                 config=None,
+                 writable=True, 
+                 defaultsection="__root__",
                  identifier="inifile",
-                 section=None,
-                 defaultsection="__root__"):
+                 **kwargs):
         """
         :param inifile: The name of a ini-style configuration file. The
                         file should have a top-level section named
@@ -214,6 +220,9 @@ class INIFile(ConfigSource):
                         objects.
         :type inifile: str
         """
+        super(INIFile, self).__init__()
+        self.writable = writable
+        self.identifier = identifier
         if inifilename:
             if not os.path.exists(inifilename):
                 logging.warn("INI file %s does not exist" % inifilename)
@@ -221,14 +230,16 @@ class INIFile(ConfigSource):
             else:
                 self.source = configparser.ConfigParser(dict_type=OrderedDict)
                 self.source.read(inifilename)
-        elif config:
-            self.source = config
+        # only used when creating new INIFile objects internally
+        elif 'config' in kwargs:  
+            self.source = kwargs['config']
         else:
             raise ValueError("Neither inifilename nor config parser object specified")
-        if section:
-            self.sectionkey = section
+        if 'section' in kwargs:
+            self.sectionkey = kwargs['section']
         else:
             self.sectionkey = defaultsection
+            self.dirty = False
         self.defaultsection = defaultsection
 
     def typed(self, key):
@@ -258,7 +269,8 @@ class INIFile(ConfigSource):
 
     def set(self, key, value):
         self.source.set(self.sectionkey, key, value)
-        
+        self.dirty = False
+
     def keys(self):
         if self.source:
             for k in self.source.options(self.sectionkey):
@@ -267,10 +279,13 @@ class INIFile(ConfigSource):
 
 class Environment(ConfigSource):
     def __init__(self,
-                 environ=os.environ,
+                 environ=None,
                  prefix="",
                  sectionsep="_",
                  identifier="environment"):
+        super(Environment, self).__init__()
+        if not environ:
+            environ = os.environ
         self.source = environ
         self.prefix = prefix
         self.sectionsep = sectionsep
@@ -319,7 +334,7 @@ class Environment(ConfigSource):
 
 class Commandline(ConfigSource):
     def __init__(self,
-                 commandline=sys.argv,
+                 commandline=None,
                  sectionsep="-",
                  identifier="commandline"):
         """
@@ -338,14 +353,18 @@ class Commandline(ConfigSource):
                            separator.
         :type  sectionsep: str
         """
+        super(Commandline, self).__init__()
+        if not commandline:
+            commandline = sys.argv
         self.source = OrderedDict()
         self.sectionargvs = defaultdict(list)
         self.sectionsep = sectionsep
+        self.identifier = identifier
         for arg in commandline:
             if isinstance(arg, bytes):
-                arg = arg.decode("utf-8") # FIXME: Find out proper way
-                                          # of finding the encoding of
-                                          # argv
+                # FIXME: Find out proper way of finding the encoding
+                # of argv
+                arg = arg.decode("utf-8") 
             if arg.startswith("--"):
                 if "=" in arg:
                     (param, value) = arg.split("=", 1)
@@ -402,24 +421,34 @@ class Commandline(ConfigSource):
         try:
             return not isinstance(self.get(key), str)
         except:
-            return Falseq
+            return False
 
 
-# requires PyYaml
-class YAMLFile(ConfigSource):
-    pass
+# requires PyYaml -- assuming it loads/saves as plain dicts?
+class YAMLFile(DictSource):
+    def __init__(self, yamlfile, writable=True, identifier="yaml"):
+        super(YAMLFile, self).__init__()
+        self.writable = writable
+        self.identifier = identifier
 
 
-# builtin
-import plistlib
-class PList(ConfigSource):
-    pass
+class PListFile(DictSource):
+    def __init__(self, plistfile, writable=True, identifier="plist"):
+        super(JSONFile, self).__init__()
+        with open(plistfile, "rb") as fp:
+            self.source = plistlib.load(fp)
+        self.writable = writable
+        self.identifier = identifier
 
 
 # requires requests or python-etcd
 class Etcd(ConfigSource):
     """Allows configuration to be read from (and stored in) an etcd store."""
-    pass
+    def __init__(self, url, writable=True, identifier="etcd"):
+        super(Etcd, self).__init__()
+        self.source = url
+        self.writable = writable
+        self.identifier = identifier
 
 
 class LayeredConfig(object):
@@ -523,9 +552,10 @@ class LayeredConfig(object):
         root = config
         while root._parent:
             root = root._parent
-        if root._inifile_dirty:
-            with open(root._inifilename, "w") as fp:
-                root._configparser.write(fp)
+
+        for source in root._sources:
+            if source.writable and source.dirty:
+                source.save()
 
     @staticmethod
     def set(config, key, value, source="defaults"):
@@ -624,41 +654,25 @@ class LayeredConfig(object):
             object.__setattr__(self, name, value)
             return
 
-        # First make sure that the higher-priority
-        # commandline-derived data doesn't shadow the new value.
-        if name in self._commandline:
-            del self._commandline[name]
-        # then update our internal representation
-        if name not in self._inifile:
-            self._inifile[name] = None
-        if value != self._inifile[name]:
-            self._inifile[name] = value
-            root = self
-            while root._parent:
-                root = root._parent
-            if root._inifilename:
-                root._inifile_dirty = True
+        # we need to get access to two sources:
 
-        # and finally update our associated cfgparser object so that we later
-        # can write() out the inifile. This lasts part is a bit complicated as
-        # we need to find the root LayeredConfig object where the cfgparser
-        # object resides.
-        root = self
-        sectionkeys = []
-        while root._parent:
-            # print("root._parent is not None")
-            sectionkeys.append(root._sectionkey)
-            root = root._parent
-
-        branch = root._configparser
-        if branch:
-            section = "".join(sectionkeys)  # doesn't really work with more than 1 level
-            # print("Setting %s %s %s" % (section,name,str(value)))
-            if not section:
-                section = "__root__"
-            root._configparser.set(section, name, str(value))
+        # 1. the highest-priority source that has this value (typed or
+        # not)
+        found = False
+        for source in reversed(self._sources):
+            if source.has(name):
+                found = True
+                break
+        if found:
+            source.set(name, value)  # regardless of typing
         else:
-            # If there is no _configparser object, then this
-            # LayeredConfig instance was created without one. There is
-            # no way to persist configuration values, so we're done
-            pass
+            raise AttributeError("Configuration key %s doesn't exist" % name)
+
+        # 2. the highest-priority writable source (regardless of
+        #    whether it originally had this value)
+        for writesource in reversed(self._sources):
+            if writesource.writable:
+                found = True
+                break
+        if found and writesource != source:
+            writesource.set(name, value)

@@ -164,7 +164,7 @@ force = True
 extra = foo, bar
 
 [mymodule]
-force=False
+force = False
 extra = foo, baz
 expires = 2014-10-15
 
@@ -565,51 +565,53 @@ class TestLayered(unittest.TestCase):
         self.assertEqual(['force', 'home', 'loglevel'], list(cfg.mymodule))
 
 
-class TestModifications(unittest.TestCase):
+class TestModifications(TestINIFileHelper, unittest.TestCase):
     def test_modified(self):
-        defaults = {'lastdownload':None}
+        defaults = {'lastdownload': None}
         cfg = LayeredConfig(Defaults(defaults))
         now = datetime.now()
         cfg.lastdownload = now
-        self.assertEqual(cfg.lastdownload,now)
-        
+        self.assertEqual(cfg.lastdownload, now)
 
     def test_modified_subsections(self):
-        defaults = {'force':False,
-                    'home':'thisdata',
-                    'loglevel':'INFO'}
-        cmdline=['--mymodule-home=thatdata','--mymodule-force'] # 
-        cfg = LayeredConfig(Defaults(defaults), INIFile("ferenda.ini"), Commandline(cmdline), cascade=True)
-        cfg.mymodule.loglevel = 'ERROR'
+        defaults = {'force': False,
+                    'home': 'thisdata',
+                    'loglevel': 'INFO'}
+        cmdline = ['--mymodule-home=thatdata', '--mymodule-force']
+        cfg = LayeredConfig(Defaults(defaults),
+                            INIFile("complex.ini"),
+                            Commandline(cmdline),
+                            cascade=True)
+        cfg.mymodule.expires = date(2014, 10, 24)
 
     def test_write_configfile(self):
-        cfg = LayeredConfig(INIFile("ferenda.ini"))
-        cfg.mymodule.lastrun = datetime(2013,9,18,15,41,0)
+        cfg = LayeredConfig(INIFile("complex.ini"))
+        cfg.mymodule.expires = date(2014, 10, 24)
         # calling write for any submodule will force a write of the
         # entire config file
         LayeredConfig.write(cfg.mymodule)
         want = """[__root__]
 home = mydata
 processes = 4
-loglevel = INFO
 force = True
-extra = ['foo','bar']
+extra = foo, bar
 
 [mymodule]
-loglevel = DEBUG
 force = False
-        extra = ['foo','baz']
-lastrun = 2013-09-18 15:41:00
+extra = foo, baz
+expires = 2014-10-24
 
+[extramodule]
+unique = True
 """
-        got = util.readfile("ferenda.ini").replace("\r\n","\n")
-        #if not isinstance(got, six.text_type):
-        #    got = got.decode("utf-8")
-        self.assertEqual(want,got)
+        with open("complex.ini") as fp:
+            got = fp.read().replace("\r\n", "\n")
+        self.assertEqual(want, got)
 
     def test_write_noconfigfile(self):
-        cfg = LayeredConfig(Defaults({'lastrun': datetime(2012,9,18,15,41,0)}))
-        cfg.lastrun = datetime(2013,9,18,15,41,0)
+        cfg = LayeredConfig(Defaults({'lastrun':
+                                      datetime(2012, 9, 18, 15, 41, 0)}))
+        cfg.lastrun = datetime(2013, 9, 18, 15, 41, 0)
         LayeredConfig.write(cfg)
 
 

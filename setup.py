@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
 
 try:
     from setuptools import setup
@@ -22,9 +23,21 @@ test_requirements = [
     # TODO: put package test requirements here
 ]
 
+# we can't just "import layeredconfig" to get at
+# layeredconfig.__version__ since it might have unmet dependencies at
+# this point. Exctract it directly from the file (code from rdflib:s
+# setup.py)
+def find_version(filename):
+    import re
+    _version_re = re.compile(r'__version__ = "(.*)"')
+    for line in open(filename):
+        version_match = _version_re.match(line)
+        if version_match:
+            return version_match.group(1)
+
 setup(
     name='layeredconfig',
-    version='0.1.0',
+    version=find_version('layeredconfig/__init__.py'),
     description='Manages configuration coming from config files, environment variables, command line arguments, code defaults or other sources',
     long_description=readme + '\n\n' + history,
     author='Staffan Malmgren',
