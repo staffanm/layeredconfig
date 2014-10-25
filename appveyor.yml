@@ -11,6 +11,6 @@ install:
   - "%PYTHON%/python.exe c:/get-pip.py"
   - "%PYTHON%/Scripts/pip.exe -q install -r requirements.txt"
 test_script:
-  - "%PYTHON%/python.exe setup.py test
+  - "%PYTHON%/python.exe" setup.py test
 
 
