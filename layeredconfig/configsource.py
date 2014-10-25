@@ -10,6 +10,7 @@ class ConfigSource(object):
         self.identifier = kwargs.get('identifier',
                                      self.__class__.__name__.lower())
         self.writable = kwargs.get('writable', False)
+        self.cascade = kwargs.get('cascade', False)
         self.parent = kwargs.get('parent')
         self.source = None
 

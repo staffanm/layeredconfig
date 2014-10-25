@@ -31,25 +31,30 @@ class INIFile(ConfigSource):
             if not os.path.exists(inifilename):
                 logging.warn("INI file %s does not exist" % inifilename)
                 self.source = None
+                self.inifilename = None
             else:
                 self.source = configparser.ConfigParser(dict_type=OrderedDict)
                 self.source.read(inifilename)
+                self.inifilename = inifilename
         # only used when creating new INIFile objects internally
         elif 'config' in kwargs:  
             self.source = kwargs['config']
+            self.inifilename = None
         else:
-            raise ValueError("Neither inifilename nor config parser object specified")
+            # This is an "empty" INIFile object
+            self.inifilename = None
         if 'section' in kwargs:
             self.sectionkey = kwargs['section']
         else:
             self.sectionkey = defaultsection
             self.dirty = False
+        self.writable = writable
         self.defaultsection = defaultsection
 
     def typed(self, key):
         # INI files carry no intrinsic type information
         return False
-        
+
     def subsections(self):
         # self.source may be None if we provided the path to a
         # nonexistent inifile (this should probably throw an exception
@@ -81,3 +86,10 @@ class INIFile(ConfigSource):
         if self.source:
             for k in self.source.options(self.sectionkey):
                 yield k
+
+    def save(self):
+        # this should only be called on root objects
+        assert not self.parent, "save() should only be called on root objects"
+        if self.inifilename:
+            with open(self.inifilename, "w") as fp:
+                self.source.write(fp)

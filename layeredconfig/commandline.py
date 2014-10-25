@@ -5,6 +5,7 @@ except ImportError:  # pragma: no cover
     # if on python 2.6
     from ordereddict import OrderedDict
 from six import text_type as str
+import sys
 
 from . import ConfigSource
 

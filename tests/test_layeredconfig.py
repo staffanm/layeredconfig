@@ -534,7 +534,7 @@ class TestTypingINIFile(TestINIFileHelper,
 
 class TestLayered(TestINIFileHelper, unittest.TestCase):
     def test_layered(self):
-        defaults = {'home':'someplace'}
+        defaults = {'home': 'someplace'}
         cmdline = ['--home=anotherplace']
         env = {'MYAPP_HOME': 'yourdata'}
         cfg = LayeredConfig(Defaults(defaults))
@@ -548,16 +548,16 @@ class TestLayered(TestINIFileHelper, unittest.TestCase):
                             Environment(env, prefix="MYAPP_"),
                             Commandline(cmdline))
         self.assertEqual(cfg.home, 'anotherplace')
-        self.assertEqual(['home', 'processes', 'force', 'extra', 'expires', 'lastrun'], list(cfg))
-
-
+        self.assertEqual(['home', 'processes', 'force', 'extra', 'expires',
+                          'lastrun'], list(cfg))
 
     def test_layered_subsections(self):
-        defaults = OrderedDict((('force',False),
-                                ('home','thisdata'),
-                                ('loglevel','INFO')))
-        cmdline=['--mymodule-home=thatdata','--mymodule-force'] # 
-        cfg = LayeredConfig(Defaults(defaults), Commandline(cmdline), cascade=True)
+        defaults = OrderedDict((('force', False),
+                                ('home', 'thisdata'),
+                                ('loglevel', 'INFO')))
+        cmdline = ['--mymodule-home=thatdata', '--mymodule-force']
+        cfg = LayeredConfig(Defaults(defaults), Commandline(cmdline),
+                            cascade=True)
         self.assertEqual(cfg.mymodule.force, True)
         self.assertEqual(cfg.mymodule.home, 'thatdata')
         self.assertEqual(cfg.mymodule.loglevel, 'INFO')
@@ -570,14 +570,13 @@ class TestLayered(TestINIFileHelper, unittest.TestCase):
         # __getattribute__ lookup_resource to look in the Defaults
         # object in the sub-LayeredConfig object, unless we do
         # something smart.
-        defaults = {'mymodule':defaults}
-        cmdline=['--home=thatdata','--force'] 
-        cfg = LayeredConfig(Defaults(defaults), Commandline(cmdline), cascade=True)
+        defaults = {'mymodule': defaults}
+        cmdline = ['--home=thatdata', '--force']
+        cfg = LayeredConfig(Defaults(defaults), Commandline(cmdline),
+                            cascade=True)
         self.assertEqual(cfg.mymodule.force, True)
         self.assertEqual(cfg.mymodule.home, 'thatdata')
         self.assertEqual(cfg.mymodule.loglevel, 'INFO')
-
-
         self.assertEqual(['force', 'home', 'loglevel'], list(cfg.mymodule))
 
 
@@ -619,6 +618,7 @@ expires = 2014-10-24
 
 [extramodule]
 unique = True
+
 """
         with open("complex.ini") as fp:
             got = fp.read().replace("\r\n", "\n")

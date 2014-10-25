@@ -82,9 +82,15 @@ class LayeredConfig(object):
         # 1. find all names
         sectionkeys = []
         for src in self._sources:
-            for k in src.subsections():
-                if k not in sectionkeys:
-                    sectionkeys.append(k)
+            try:
+                for k in src.subsections():
+                    if k not in sectionkeys:
+                        sectionkeys.append(k)
+            except AttributeError:  # possibly others, or all
+                # we couldn't get any subsections for source, perhaps
+                # because it's an "empty" source. Well, that's ok.
+                pass
+                
 
         for k in sectionkeys:
             # 2. find all subsections in all of our sources
@@ -92,6 +98,16 @@ class LayeredConfig(object):
             for src in self._sources:
                 if k in list(src.subsections()):
                     s.append(src.subsection(k))
+                else:
+                    # create an "empty" subsection object. It's
+                    # imported that all the LayeredConfig objects in a
+                    # tree have the exact same set of
+                    # ConfigSource-derived types.
+                    # print("creating empty %s" % src.__class__.__name__)
+                    s.append(src.__class__(parent=src,
+                                           identifier=src.identifier,
+                                           writable=src.writable,
+                                           cascade=self._cascade))
             # 3. create a LayeredConfig object for the subsection
             c = LayeredConfig(*s,
                               cascade=self._cascade,
@@ -150,7 +166,7 @@ class LayeredConfig(object):
         
     def __iter__(self):
         l = []
-
+        iterables = []
         if self._cascade and self._parent:
             iterables.append(self._parent)
 
@@ -173,8 +189,18 @@ class LayeredConfig(object):
         found = False
         # find the appropriate value in the highest-priority source
         for source in reversed(self._sources):
-            if source.has(name):
-                found = True
+            # if self._cascade, we must climb the entire chain of
+            # .parent objects to be sure.
+            done = False
+            while not done:
+                if source.has(name):
+                    found = True
+                    done = True # we found it
+                elif self._cascade and source.parent:
+                    source = source.parent
+                else:
+                    done = True # we didn't find it
+            if found:
                 break
 
         if found:
@@ -233,5 +259,8 @@ class LayeredConfig(object):
             if writesource.writable:
                 found = True
                 break
-        if found and writesource != source:
+        if found:
             writesource.set(name, value)
+            while writesource.parent:
+                writesource = writesource.parent
+                writesource.dirty = True

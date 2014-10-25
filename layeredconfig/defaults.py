@@ -1,7 +1,7 @@
 from . import DictSource
 
 class Defaults(DictSource):
-    def __init__(self, defaults, *args, **kwargs):
+    def __init__(self, defaults=None, *args, **kwargs):
         """
         This source is initialized with a dict.
 
@@ -11,4 +11,7 @@ class Defaults(DictSource):
         :type defaults: dict
         """
         super(Defaults, self).__init__(*args, **kwargs)
-        self.source = defaults
+        if defaults:
+            self.source = defaults
+            # if not, DictSource.__init__ ensures that self.source is
+            # a empty dict
