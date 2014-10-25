@@ -1,0 +1,15 @@
+build: false
+version: 0.1.0.{build}
+environment:
+  matrix:
+    - PYTHON: "C:/Python27"
+    - PYTHON: "C:/Python34"
+  - ps: Invoke-WebRequest "https://raw.github.com/pypa/pip/master/contrib/get-pip.py" -OutFile "c:/get-pip.py"
+  - ps: "git config --global core.autocrlf false" # always use unix lineendings
+install:
+  - "%PYTHON%/python.exe c:/get-pip.py"
+  - "%PYTHON%/Scripts/pip.exe -q install -r requirements.txt"
+test_script:
+  - "%PYTHON%/python.exe setup.py test
+
+
