@@ -3,7 +3,9 @@ version: 0.1.0.{build}
 environment:
   matrix:
     - PYTHON: "C:/Python27"
+      REQUIREMENTS: "requirements.txt"
     - PYTHON: "C:/Python34"
+      REQUIREMENTS: "requirements.txt"
   - ps: Invoke-WebRequest "https://raw.github.com/pypa/pip/master/contrib/get-pip.py" -OutFile "c:/get-pip.py"
   - ps: "git config --global core.autocrlf false" # always use unix lineendings
 install:
