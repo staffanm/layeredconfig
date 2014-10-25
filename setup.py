@@ -14,7 +14,8 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 requirements = [
     'six',
-    'requests'
+    'requests',
+    'PyYAML'
 ]
 
 if sys.version_info < (2,7,0):
