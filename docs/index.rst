@@ -3,8 +3,13 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to LayeredConfig's documentation!
-======================================
+LayeredConfig
+=============
+
+LayeredConfig compiles configuration from files, environment
+variables, command line arguments, hard-coded default values, `etcd
+stores <https://coreos.com/docs/#distributed-configuration>`_ or other
+backends, and makes it available to your code in a simple way.
 
 Contents:
 
@@ -12,11 +17,9 @@ Contents:
    :maxdepth: 2
 
    readme
-   installation
    usage
-   contributing
-   authors
-   history
+   configsource
+   api
 
 Indices and tables
 ==================

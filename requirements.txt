@@ -1,4 +1,5 @@
 wheel
+sphinx
 six
 requests
 PyYAML
