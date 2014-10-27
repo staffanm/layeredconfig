@@ -72,8 +72,9 @@ class INIFile(ConfigSource):
                        parent=self, identifier=self.identifier)
 
     def has(self, key):
-        return key in self.source.options(self.sectionkey)
-        
+        if self.source:
+            return key in self.source.options(self.sectionkey)
+
     def get(self, key):
         return str(self.source.get(self.sectionkey, key))
 

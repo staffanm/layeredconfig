@@ -265,6 +265,12 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase,
         cfg = LayeredConfig(INIFile("nonexistent.ini"))
         self.assertEqual([], list(cfg))
 
+        # make sure a nonexistent inifile doesn't interfere with the
+        # rest of the LayeredConfig object
+        cfg = LayeredConfig(Defaults({'datadir': 'something'}),
+                            INIFile("nonexistent.ini"))
+        self.assertEqual("something", cfg.datadir)
+
 
 class TestJSONFile(unittest.TestCase, TestConfigSourceHelper,
                    TestLayeredConfigHelper):
