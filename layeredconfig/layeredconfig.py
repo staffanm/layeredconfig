@@ -196,11 +196,11 @@ class LayeredConfig(object):
             while not done:
                 if source.has(name):
                     found = True
-                    done = True # we found it
+                    done = True  # we found it
                 elif self._cascade and source.parent:
                     source = source.parent
                 else:
-                    done = True # we didn't find it
+                    done = True  # we didn't find it
             if found:
                 break
 
@@ -208,7 +208,6 @@ class LayeredConfig(object):
             if source.typed(name):
                 return source.get(name)
             else:
-
                 # we need to find a typesource for this value. 
                 done = False
                 this = self
@@ -265,6 +264,8 @@ class LayeredConfig(object):
                 break
         if found:
             source.set(name, value)  # regardless of typing
+        elif self._cascade and self._parent:
+            return self._parent.__setattr__(name, value)
         else:
             raise AttributeError("Configuration key %s doesn't exist" % name)
 

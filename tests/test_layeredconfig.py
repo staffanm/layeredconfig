@@ -20,7 +20,8 @@ except ImportError:  # pragma: no cover
     from ordereddict import OrderedDict
 
 # The system under test
-from layeredconfig import LayeredConfig, Defaults, INIFile, JSONFile, Environment, Commandline
+from layeredconfig import (LayeredConfig, Defaults, INIFile, JSONFile,
+                           Environment, Commandline)
 
 
 class TestConfigSourceHelper(object):
@@ -629,6 +630,17 @@ class TestModifications(TestINIFileHelper, unittest.TestCase):
                             cascade=True)
         cfg.mymodule.expires = date(2014, 10, 24)
 
+    def test_modified_singlesource_subsection(self):
+        self.globalconf = LayeredConfig(
+            Defaults({'download_text': None,
+                      'base': {}}),
+            cascade=True)
+        # this should't raise an AttributeError
+        self.globalconf.base.download_text
+        # this shouldn't, either
+        self.globalconf.base.download_text = "WHAT"
+
+        
     def test_write_configfile(self):
         cfg = LayeredConfig(INIFile("complex.ini"))
         cfg.mymodule.expires = date(2014, 10, 24)
