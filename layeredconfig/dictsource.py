@@ -13,7 +13,7 @@ class DictSource(ConfigSource):
 
     def keys(self):
         for (k, v) in self.source.items():
-            if not isinstance(v, dict):
+            if not isinstance(v, dict) and not isinstance(v, type):
                 yield k
 
     def subsection(self, key):

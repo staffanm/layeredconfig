@@ -482,6 +482,22 @@ class TestTyping(unittest.TestCase, TestLayeredConfigHelper):
         self.assertTrue(cfg.implicitboolean)
         self.assertIs(type(cfg.implicitboolean), bool)
 
+    def test_typed_novalue(self):
+        # this cmdline only sets some of the settings. The test is
+        # that the rest should raise AttributeError (not return None,
+        # as was the previous behaviour), and that __iter__ should not
+        # include them.
+        cmdline = ['--processes=4', '--force=False']
+        cfg = LayeredConfig(Defaults(self.types), Commandline(cmdline))
+        self.assertEqual(4, cfg.processes)
+        self.assertIsInstance(cfg.processes, int)
+        with self.assertRaises(AttributeError):
+            cfg.home
+        with self.assertRaises(AttributeError):
+            cfg.extra
+        self.assertEqual(set(['processes', 'force']),
+                         set(list(cfg)))
+
     def test_typed_override(self):
         # make sure this auto-typing isn't run for bools
         types = {'logfile': True}
