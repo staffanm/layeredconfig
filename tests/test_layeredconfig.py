@@ -611,6 +611,16 @@ class TestLayered(TestINIFileHelper, unittest.TestCase):
         self.assertEqual(['force', 'home', 'loglevel'], list(cfg.mymodule))
 
 
+class TestSubsections(unittest.TestCase):
+    def test_list(self):
+        defaults = {'home': 'mydata',
+                    'subsection': {'processes': 4}}
+        cfg = LayeredConfig(Defaults(defaults),
+                            cascade=True)
+        self.assertEqual(set(['home', 'processes']),
+                         set(cfg.subsection))
+
+
 class TestModifications(TestINIFileHelper, unittest.TestCase):
     def test_modified(self):
         defaults = {'lastdownload': None}

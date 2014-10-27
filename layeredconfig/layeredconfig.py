@@ -166,17 +166,19 @@ class LayeredConfig(object):
 #        pass
 
     def __iter__(self):
-        l = []
-        iterables = []
-        if self._cascade and self._parent:
-            iterables.append(self._parent)
+        l = set()
 
-        # FIXME: sources are no longer iterables, need to call their
-        # keys() methods (which may return lists or generators)
         iterables = [x.keys() for x in self._sources]
+
+        if self._cascade:
+            c = self
+            while c._parent:
+                iterables.append(c._parent)
+                c = c._parent
+
         for k in itertools.chain(*iterables):
             if k not in l:
-                l.append(k)
+                l.add(k)
                 yield k
 
     # FIXME: try to use __getattrib__
