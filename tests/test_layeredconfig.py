@@ -281,6 +281,14 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase,
         self.assertEqual("else", iniobj.get("datadir"))
         self.assertEqual("something", defobj.get("datadir"))
 
+        # same as above, but with a "empty" INIFile object
+        iniobj = INIFile()
+        cfg = LayeredConfig(defobj, iniobj)
+        self.assertEqual("something", cfg.datadir)
+        cfg.datadir = "else"
+        self.assertEqual("else", cfg.datadir)
+
+
 class TestJSONFile(unittest.TestCase, TestConfigSourceHelper,
                    TestLayeredConfigHelper):
 

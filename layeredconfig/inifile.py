@@ -44,6 +44,8 @@ class INIFile(ConfigSource):
             self.inifilename = None
         else:
             # This is an "empty" INIFile object
+            self.source = configparser.ConfigParser(dict_type=OrderedDict)
+            self.source.add_section(defaultsection)
             self.inifilename = None
         if 'section' in kwargs:
             self.sectionkey = kwargs['section']
