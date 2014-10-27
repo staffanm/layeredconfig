@@ -148,22 +148,23 @@ class LayeredConfig(object):
         else:
             return default
 
-    @staticmethod
-    def where(config, key):
-        """returns the identifier of a source where a given key is found, or None."""
-        pass
+# These are methods i'd like to implement next
+#        
+#    @staticmethod
+#    def where(config, key):
+#        """returns the identifier of a source where a given key is found, or None."""
+#        pass
+#
+#    @staticmethod
+#    def dump(config):
+#        """Returns the contents of config as a dict."""
+#        pass
+#
+#    @staticmethod
+#    def load(config, d):
+#        """Recreates a dump()ed config object."""
+#        pass
 
-    @staticmethod
-    def dump(config):
-        """Returns the contents of config as a dict."""
-        pass
-
-    @staticmethod
-    def load(config, d):
-        """Recreates a dump()ed config object."""
-        pass
-        
-        
     def __iter__(self):
         l = []
         iterables = []
@@ -241,7 +242,21 @@ class LayeredConfig(object):
 
         # we need to get access to two sources:
 
-        # 1. the highest-priority source that has this value (typed or
+        # 1. the highest-priority writable source (regardless of
+        #    whether it originally had this value)
+        found = False
+        for writesource in reversed(self._sources):
+            if writesource.writable:
+                found = True
+                break
+        if found:
+            writesource.set(name, value)
+            writesource.dirty = True
+            while writesource.parent:
+                writesource = writesource.parent
+                writesource.dirty = True
+
+        # 2. the highest-priority source that has this value (typed or
         # not) or contains typing info for it.
         found = False
         for source in reversed(self._sources):
@@ -253,14 +268,3 @@ class LayeredConfig(object):
         else:
             raise AttributeError("Configuration key %s doesn't exist" % name)
 
-        # 2. the highest-priority writable source (regardless of
-        #    whether it originally had this value)
-        for writesource in reversed(self._sources):
-            if writesource.writable:
-                found = True
-                break
-        if found:
-            writesource.set(name, value)
-            while writesource.parent:
-                writesource = writesource.parent
-                writesource.dirty = True

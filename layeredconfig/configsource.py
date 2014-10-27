@@ -15,8 +15,26 @@ class ConfigSource(object):
         self.source = None
 
     @abstractmethod
-    def typed(self, key):
-        return
+    def typed(self, key): pass  # pragma: no cover
+
+    @abstractmethod
+    def subsections(self): pass  # pragma: no cover
+
+    @abstractmethod
+    def subsection(self, key): pass  # pragma: no cover
+
+    @abstractmethod
+    def has(self, key): pass  # pragma: no cover
+
+    @abstractmethod
+    def get(self, key): pass  # pragma: no cover
+
+    @abstractmethod
+    def set(self, key, value): pass  # pragma: no cover
+
+    @abstractmethod
+    def keys(self): pass  # pragma: no cover
+
 
     # @abstractmethod
     # should this be called "coerce", "cast" or something similar
@@ -85,27 +103,4 @@ class ConfigSource(object):
         # print("Converting %r to %r" % (value,t(value)))
         return t(value)
 
-    @abstractmethod
-    def subsections(self):
-        return
-
-    @abstractmethod
-    def subsection(self, key):
-        return
-
-    @abstractmethod
-    def has(self, key):
-        return
-
-    @abstractmethod
-    def get(self, key):
-        return
-
-    @abstractmethod
-    def set(self, key, value):
-        return
-
-    @abstractmethod
-    def keys(self):
-        return
 

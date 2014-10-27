@@ -30,8 +30,10 @@ class INIFile(ConfigSource):
         if inifilename:
             if not os.path.exists(inifilename):
                 logging.warn("INI file %s does not exist" % inifilename)
-                self.source = None
-                self.inifilename = None
+                # create a empty ConfigParser
+                self.source = configparser.ConfigParser(dict_type=OrderedDict)
+                self.inifilename = inifilename
+                self.source.add_section(defaultsection)
             else:
                 self.source = configparser.ConfigParser(dict_type=OrderedDict)
                 self.source.read(inifilename)
