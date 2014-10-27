@@ -242,10 +242,10 @@ class LayeredConfig(object):
         # we need to get access to two sources:
 
         # 1. the highest-priority source that has this value (typed or
-        # not)
+        # not) or contains typing info for it.
         found = False
         for source in reversed(self._sources):
-            if source.has(name):
+            if source.has(name) or source.typed(name):
                 found = True
                 break
         if found:

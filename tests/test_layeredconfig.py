@@ -646,6 +646,19 @@ unique = True
         cfg.lastrun = datetime(2013, 9, 18, 15, 41, 0)
         LayeredConfig.write(cfg)
 
+    def test_set_novalue(self):
+        # it should be possible to set values that are defined in any
+        # of the configsources, even though only typing information
+        # exists there.
+        cfg = LayeredConfig(Defaults({'placeholder': int}),
+                            Commandline([]))
+        cfg.placeholder = 42
+
+        # but it shouldn't be possible to set values that hasn't been
+        # defined anywhere.
+        with self.assertRaises(AttributeError):
+            cfg.nonexistent = 43
+
 
 class TestAccessors(TestINIFileHelper, unittest.TestCase):
 
