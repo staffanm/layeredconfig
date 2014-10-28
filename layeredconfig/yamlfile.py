@@ -1,9 +1,9 @@
 import codecs
 
 import yaml
-from six import text_type as str
 
 from . import DictSource
+
 
 class YAMLFile(DictSource):
     def __init__(self, yamlfilename=None, writable=True, *args, **kwargs):

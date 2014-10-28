@@ -518,6 +518,158 @@ processes: 4
             got = fp.read().replace("\r\n", "\n")
         self.assertEqual(want, got)
 
+class TestPListFile(unittest.TestCase, TestConfigSourceHelper,
+                    TestLayeredConfigHelper):
+
+    def setUp(self):
+        with open("simple.plist", "w") as fp:
+            fp.write("""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>expires</key>
+        <string>2014-10-15</string>
+        <key>extra</key>
+        <array>
+                <string>foo</string>
+                <string>bar</string>
+        </array>
+        <key>force</key>
+        <true/>
+        <key>home</key>
+        <string>mydata</string>
+        <key>lastrun</key>
+        <date>2014-10-15T14:32:07Z</date>
+        <key>processes</key>
+        <integer>4</integer>
+</dict>
+</plist>
+""")
+        with open("complex.plist", "w") as fp:
+            fp.write("""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>extra</key>
+        <array>
+                <string>foo</string>
+                <string>bar</string>
+        </array>
+        <key>extramodule</key>
+        <dict>
+                <key>unique</key>
+                <true/>
+        </dict>
+        <key>force</key>
+        <true/>
+        <key>home</key>
+        <string>mydata</string>
+        <key>mymodule</key>
+        <dict>
+                <key>arbitrary</key>
+                <dict>
+                        <key>nesting</key>
+                        <dict>
+                                <key>depth</key>
+                                <string>works</string>
+                        </dict>
+                </dict>
+                <key>expires</key>
+                <string>2014-10-15</string>
+                <key>extra</key>
+                <array>
+                        <string>foo</string>
+                        <string>baz</string>
+                </array>
+                <key>force</key>
+                <false/>
+        </dict>
+        <key>processes</key>
+        <integer>4</integer>
+</dict>
+</plist>
+""")
+        self.simple = PListFile("simple.plist")
+        self.complex = PListFile("complex.plist")
+
+    def tearDown(self):
+        os.unlink("simple.plist")
+        os.unlink("complex.plist")
+
+    # override only because plists cannot handle date objects (only datetime)
+    def test_get(self):
+        self.assertEqual(self.simple.get("home"), "mydata")
+        self.assertEqual(self.simple.get("processes"), 4)
+        self.assertEqual(self.simple.get("force"), True)
+        self.assertEqual(self.simple.get("extra"), ['foo', 'bar'])
+        self.assertEqual(self.simple.get("expires"), "2014-10-15")
+        self.assertEqual(self.simple.get("lastrun"),
+                         datetime(2014, 10, 15, 14, 32, 7))
+
+    def test_plistfile(self):
+        cfg = LayeredConfig(self.simple)
+        self._test_mainsection(cfg,
+                               date_type=str)
+
+    def test_plistfile_subsections(self):
+        cfg = LayeredConfig(self.complex)
+        self._test_subsections(cfg,
+                               date_type=str)
+
+    def test_write(self):
+        self.maxDiff = None
+        cfg = LayeredConfig(self.complex)
+        cfg.mymodule.expires = date(2014, 10, 24)
+        # calling write for any submodule will force a write of the
+        # entire config file
+        LayeredConfig.write(cfg.mymodule)
+        # note: plistlib creates files with tabs, not spaces.
+        want = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>extra</key>
+	<array>
+		<string>foo</string>
+		<string>bar</string>
+	</array>
+	<key>extramodule</key>
+	<dict>
+		<key>unique</key>
+		<true/>
+	</dict>
+	<key>force</key>
+	<true/>
+	<key>home</key>
+	<string>mydata</string>
+	<key>mymodule</key>
+	<dict>
+		<key>arbitrary</key>
+		<dict>
+			<key>nesting</key>
+			<dict>
+				<key>depth</key>
+				<string>works</string>
+			</dict>
+		</dict>
+		<key>expires</key>
+		<string>2014-10-24</string>
+		<key>extra</key>
+		<array>
+			<string>foo</string>
+			<string>baz</string>
+		</array>
+		<key>force</key>
+		<false/>
+	</dict>
+	<key>processes</key>
+	<integer>4</integer>
+</dict>
+</plist>
+"""
+        with open("complex.plist") as fp:
+            got = fp.read().replace("\r\n", "\n")
+        self.assertEqual(want, got)
 
 
 class TestCommandline(unittest.TestCase, TestConfigSourceHelper,
