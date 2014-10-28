@@ -11,6 +11,7 @@ Tests for `layeredconfig` module.
 import os
 import logging
 import unittest
+import codecs
 from six import text_type as str
 from datetime import date, datetime
 try:
@@ -21,7 +22,7 @@ except ImportError:  # pragma: no cover
 
 # The system under test
 from layeredconfig import (LayeredConfig, Defaults, INIFile, JSONFile,
-                           Environment, Commandline)
+                           YAMLFile, PListFile, Environment, Commandline, Etcd)
 
 
 class TestConfigSourceHelper(object):
@@ -288,6 +289,30 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase,
         cfg.datadir = "else"
         self.assertEqual("else", cfg.datadir)
 
+    def test_write(self):
+        cfg = LayeredConfig(INIFile("complex.ini"))
+        cfg.mymodule.expires = date(2014, 10, 24)
+        # calling write for any submodule will force a write of the
+        # entire config file
+        LayeredConfig.write(cfg.mymodule)
+        want = """[__root__]
+home = mydata
+processes = 4
+force = True
+extra = foo, bar
+
+[mymodule]
+force = False
+extra = foo, baz
+expires = 2014-10-24
+
+[extramodule]
+unique = True
+
+"""
+        with open("complex.ini") as fp:
+            got = fp.read().replace("\r\n", "\n")
+        self.assertEqual(want, got)
 
 class TestJSONFile(unittest.TestCase, TestConfigSourceHelper,
                    TestLayeredConfigHelper):
@@ -362,6 +387,137 @@ class TestJSONFile(unittest.TestCase, TestConfigSourceHelper,
                                date_type=str,
                                datetime_type=str,
                                arbitrary_nesting=True)
+
+    def test_write(self):
+        self.maxDiff = None
+        cfg = LayeredConfig(self.complex)
+        cfg.mymodule.expires = date(2014, 10, 24)
+        # calling write for any submodule will force a write of the
+        # entire config file
+        LayeredConfig.write(cfg.mymodule)
+        want = """{
+    "processes": 4, 
+    "force": true, 
+    "extra": [
+        "foo", 
+        "bar"
+    ], 
+    "home": "mydata", 
+    "mymodule": {
+        "arbitrary": {
+            "nesting": {
+                "depth": "works"
+            }
+        }, 
+        "expires": "2014-10-24", 
+        "force": false, 
+        "extra": [
+            "foo", 
+            "baz"
+        ]
+    }, 
+    "extramodule": {
+        "unique": true
+    }
+}"""
+        with open("complex.json") as fp:
+            got = fp.read().replace("\r\n", "\n")
+        self.assertEqual(want, got)
+
+class TestYAMLFile(unittest.TestCase,
+                   TestConfigSourceHelper,
+                   TestLayeredConfigHelper):
+    def setUp(self):
+        with open("simple.yaml", "w") as fp:
+            fp.write("""
+home: mydata
+processes: 4
+force: true
+extra: 
+- foo
+- bar
+expires: 2014-10-15
+lastrun: 2014-10-15 14:32:07
+""")
+        with open("complex.yaml", "w") as fp:
+            fp.write("""
+home: mydata
+processes: 4
+force: true
+extra:
+- foo
+- bar
+mymodule:
+    force: false
+    extra:
+    - foo
+    - baz
+    expires: 2014-10-15
+    arbitrary:
+        nesting:
+            depth: works
+extramodule:
+    unique: true
+""")
+        self.simple = YAMLFile("simple.yaml")
+        self.complex = YAMLFile("complex.yaml")
+
+    def tearDown(self):
+        os.unlink("simple.yaml")
+        os.unlink("complex.yaml")
+
+    # PyYAML seems to transparently convert strings that look like
+    # dates, booleans, ints etc into the correct python
+    # objects. Wow. 
+    def test_yamlfile(self):
+        cfg = LayeredConfig(self.simple)
+        self._test_mainsection(cfg)
+
+    def test_yamlfile_subsections(self):
+        cfg = LayeredConfig(self.complex)
+        self._test_subsections(cfg)
+
+    # Also, strings are unicode when they need to be,
+    # str otherwise.
+    def test_i18n(self):
+        with codecs.open("i18n.yaml", "w", encoding="utf-8") as fp:
+            fp.write("shrimpsandwich: Räksmörgås")
+        cfg = LayeredConfig(YAMLFile("i18n.yaml"))
+        self.assertEqual("Räksmörgås", cfg.shrimpsandwich)
+        os.unlink("i18n.yaml")
+
+    def test_write(self):
+        cfg = LayeredConfig(self.complex)
+        cfg.mymodule.expires = date(2014, 10, 24)
+        # calling write for any submodule will force a write of the
+        # entire config file
+        LayeredConfig.write(cfg.mymodule)
+        # note that pyyaml sorts keys alphabetically and has specific
+        # ideas on how to format the result (controllable through
+        # mostly-undocumented args to dump())
+        want = """
+extra:
+- foo
+- bar
+extramodule:
+  unique: true
+force: true
+home: mydata
+mymodule:
+  arbitrary:
+    nesting:
+      depth: works
+  expires: 2014-10-24
+  extra:
+  - foo
+  - baz
+  force: false
+processes: 4
+""".lstrip()
+        with open("complex.yaml") as fp:
+            got = fp.read().replace("\r\n", "\n")
+        self.assertEqual(want, got)
+
 
 
 class TestCommandline(unittest.TestCase, TestConfigSourceHelper,
@@ -619,6 +775,7 @@ class TestLayered(TestINIFileHelper, unittest.TestCase):
         self.assertEqual(['force', 'home', 'loglevel'], list(cfg.mymodule))
 
 
+
 class TestSubsections(unittest.TestCase):
     def test_list(self):
         defaults = {'home': 'mydata',
@@ -659,30 +816,6 @@ class TestModifications(TestINIFileHelper, unittest.TestCase):
         self.globalconf.base.download_text = "WHAT"
 
         
-    def test_write_configfile(self):
-        cfg = LayeredConfig(INIFile("complex.ini"))
-        cfg.mymodule.expires = date(2014, 10, 24)
-        # calling write for any submodule will force a write of the
-        # entire config file
-        LayeredConfig.write(cfg.mymodule)
-        want = """[__root__]
-home = mydata
-processes = 4
-force = True
-extra = foo, bar
-
-[mymodule]
-force = False
-extra = foo, baz
-expires = 2014-10-24
-
-[extramodule]
-unique = True
-
-"""
-        with open("complex.ini") as fp:
-            got = fp.read().replace("\r\n", "\n")
-        self.assertEqual(want, got)
 
     def test_write_noconfigfile(self):
         cfg = LayeredConfig(Defaults({'lastrun':

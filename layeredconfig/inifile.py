@@ -85,7 +85,6 @@ class INIFile(ConfigSource):
     def set(self, key, value):
         # Note: We need to stringify all values
         self.source.set(self.sectionkey, key, str(value))
-        self.dirty = False
 
     def keys(self):
         if self.source:
