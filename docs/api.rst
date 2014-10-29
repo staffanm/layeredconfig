@@ -34,10 +34,6 @@ API reference
   :members:
   :member-order: bysource
 
-.. autoclass:: layeredconfig.Etcd
-  :members:
-  :member-order: bysource
-
 .. autoclass:: layeredconfig.ConfigSource
   :members:
   :undoc-members:
