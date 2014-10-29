@@ -38,4 +38,4 @@ class JSONFile(DictSource):
         assert not self.parent, "save() should only be called on root objects"
         if self.jsonfilename:
             with open(self.jsonfilename, "w") as fp:
-                json.dump(self.source, fp, indent=4)
+                json.dump(self.source, fp, indent=4, separators=(',',': '), sort_keys=True)

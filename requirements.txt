@@ -1,5 +1,5 @@
+unittest2
 wheel
-sphinx
 six
 requests
 PyYAML

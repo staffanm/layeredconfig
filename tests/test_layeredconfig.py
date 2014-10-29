@@ -10,7 +10,11 @@ Tests for `layeredconfig` module.
 
 import os
 import logging
-import unittest
+import sys
+if sys.version_info < (2,7,0): # pragma: no cover
+    import unittest2 as unittest
+else: 
+    import unittest
 import codecs
 from six import text_type as str
 from datetime import date, datetime
@@ -396,29 +400,29 @@ class TestJSONFile(unittest.TestCase, TestConfigSourceHelper,
         # entire config file
         LayeredConfig.write(cfg.mymodule)
         want = """{
-    "processes": 4, 
-    "force": true, 
     "extra": [
-        "foo", 
+        "foo",
         "bar"
-    ], 
-    "home": "mydata", 
+    ],
+    "extramodule": {
+        "unique": true
+    },
+    "force": true,
+    "home": "mydata",
     "mymodule": {
         "arbitrary": {
             "nesting": {
                 "depth": "works"
             }
-        }, 
-        "expires": "2014-10-24", 
-        "force": false, 
+        },
+        "expires": "2014-10-24",
         "extra": [
-            "foo", 
+            "foo",
             "baz"
-        ]
-    }, 
-    "extramodule": {
-        "unique": true
-    }
+        ],
+        "force": false
+    },
+    "processes": 4
 }"""
         with open("complex.json") as fp:
             got = fp.read().replace("\r\n", "\n")
@@ -667,6 +671,9 @@ class TestPListFile(unittest.TestCase, TestConfigSourceHelper,
 </dict>
 </plist>
 """
+        if sys.version_info < (2,7,0): # pragma: no cover
+            # on py26, the doctype includes "Apple Computer" not "Apple"...
+            want = want.replace("//Apple//", "//Apple Computer//")
         with open("complex.plist") as fp:
             got = fp.read().replace("\r\n", "\n")
         self.assertEqual(want, got)
