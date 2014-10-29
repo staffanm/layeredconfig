@@ -1,5 +1,5 @@
 unittest2
+ordereddict
 wheel
 six
-requests
 PyYAML

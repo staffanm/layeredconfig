@@ -14,7 +14,6 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 requirements = [
     'six',
-    'requests',
     'PyYAML'
 ]
 
