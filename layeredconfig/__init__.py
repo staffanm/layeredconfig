@@ -12,8 +12,5 @@ from .inifile import INIFile
 from .jsonfile import JSONFile
 from .commandline import Commandline
 from .environment import Environment
-
-# These are not at all implemented yet
-from .etcd import Etcd
 from .plistfile import PListFile
 from .yamlfile import YAMLFile

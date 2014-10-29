@@ -44,14 +44,6 @@ layeredconfig.environment module
     :undoc-members:
     :show-inheritance:
 
-layeredconfig.etcd module
--------------------------
-
-.. automodule:: layeredconfig.etcd
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 layeredconfig.inifile module
 ----------------------------
 

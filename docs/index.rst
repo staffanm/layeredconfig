@@ -7,8 +7,7 @@ LayeredConfig
 =============
 
 LayeredConfig compiles configuration from files, environment
-variables, command line arguments, hard-coded default values, `etcd
-stores <https://coreos.com/docs/#distributed-configuration>`_ or other
+variables, command line arguments, hard-coded default values, or other
 backends, and makes it available to your code in a simple way.
 
 Contents:

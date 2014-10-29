@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover
 
 # The system under test
 from layeredconfig import (LayeredConfig, Defaults, INIFile, JSONFile,
-                           YAMLFile, PListFile, Environment, Commandline, Etcd)
+                           YAMLFile, PListFile, Environment, Commandline)
 
 
 class TestConfigSourceHelper(object):
