@@ -1,9 +1,12 @@
+import os
+
 from . import ConfigSource
 
 class Environment(ConfigSource):
     def __init__(self,
+                 prefix,
                  environ=None,
-                 prefix="",
+                 lower=True,
                  sectionsep="_",
                  *args,
                  **kwargs):

@@ -8,7 +8,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
-
+badges = open('BADGES.rst').read()
 readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
@@ -17,12 +17,13 @@ requirements = [
     'PyYAML'
 ]
 
-if sys.version_info < (2,7,0):
+if sys.version_info < (2, 7, 0):
     requirements.append('ordereddict >= 1.1')
 
 test_requirements = [
     # TODO: put package test requirements here
 ]
+
 
 # we can't just "import layeredconfig" to get at
 # layeredconfig.__version__ since it might have unmet dependencies at
@@ -40,7 +41,7 @@ setup(
     name='layeredconfig',
     version=find_version('layeredconfig/__init__.py'),
     description='Manages configuration coming from config files, environment variables, command line arguments, code defaults or other sources',
-    long_description=readme + '\n\n' + history,
+    long_description=badges + "\n\n" + readme + '\n\n' + history,
     author='Staffan Malmgren',
     author_email='staffan.malmgren@gmail.com',
     url='https://github.com/staffanm/layeredconfig',
