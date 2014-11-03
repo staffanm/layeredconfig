@@ -12,7 +12,7 @@ defaults = {"hello": "is it me you're looking for?"}
 # 2. INI configuration file
 with open("myapp.ini", "w") as fp:
     fp.write("""
-[DEFAULT]
+[__root__]
 hello = kitty
 """)
 

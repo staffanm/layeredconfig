@@ -14,7 +14,7 @@ backends, and makes it available to your code in a simple way::
     # 2. INI configuration file
     with open("myapp.ini", "w") as fp:
         fp.write("""
-    [DEFAULT]
+    [__root__]
     hello = kitty
     """)
     
