@@ -3,17 +3,27 @@ from six import text_type as str
 
 from . import DictSource
 
+
 class JSONFile(DictSource):
 
-    def __init__(self, jsonfilename=None, writable=True, *args, **kwargs):
-        """
+    def __init__(self, jsonfilename=None, writable=True, **kwargs):
+        """Loads and optionally saves configuration files in JSON
+        format. Since JSON has some support for typed values (supports
+        numbers, lists, bools, but not dates or datetimes), data from
+        this source are sometimes typed, sometimes only available as
+        strings.
 
-        :param jsonfile: A dict with configuration keys and values. If
-                             any values are dicts, these are turned into
-                             nested config objects.
-        :type defaults: dict
+        :param jsonfile: The name of a JSON file, whose root element
+                         should be a JSON object (python dict). Nested
+                         objects are turned into nested config objects.
+        :type jsonfile: str
+        :param writable: Whether changes to the LayeredConfig object
+                         that has this JSONFile object amongst its
+                         sources should be saved in the JSON file.
+        :type writable: bool
+
         """
-        super(JSONFile, self).__init__(*args, **kwargs)
+        super(JSONFile, self).__init__(**kwargs)
         if 'defaults' in kwargs:
             self.source = kwargs['defaults']
         else:

@@ -11,7 +11,7 @@ Tests for `layeredconfig` module.
 import os
 import logging
 import sys
-if sys.version_info < (2,7,0): # pragma: no cover
+if sys.version_info < (2, 7, 0):  # pragma: no cover
     import unittest2 as unittest
 else: 
     import unittest
@@ -265,6 +265,37 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase,
                                date_type=str,
                                datetime_type=str,
                                arbitrary_nesting=False)
+
+    def test_inifile_default_as_root(self):
+        # using a rootsection named DEFAULT triggers different
+        # cascading-like behaviour in configparser.
+
+        # load a modified version of complex.ini
+        with open("complex.ini") as fp:
+            ini = fp.read()
+            
+        with open("complex-otherroot.ini", "w") as fp:
+            fp.write(ini.replace("[__root__]", "[DEFAULT]"))
+        cfg = LayeredConfig(INIFile("complex-otherroot.ini",
+                                    rootsection="DEFAULT"))
+
+        # this is a modified/simplified version of ._test_subsections
+        self.assertEqual(cfg.home, 'mydata')
+        self.assertEqual(cfg.processes, '4')
+        self.assertEqual(cfg.force, 'True')
+        self.assertEqual(cfg.mymodule.force, 'False')
+        self.assertEqual(cfg.extra, "foo, bar")
+        self.assertEqual(cfg.mymodule.extra, "foo, baz")
+        with self.assertRaises(AttributeError):
+            cfg.expires
+        self.assertEqual(cfg.mymodule.expires, "2014-10-15")
+
+        # this is really unwanted cascading behaviour
+        self.assertEqual(cfg.mymodule.home, 'mydata')
+        self.assertEqual(cfg.mymodule.processes, '4')
+
+        os.unlink("complex-otherroot.ini")
+
 
     def test_inifile_nonexistent(self):
         logging.getLogger().setLevel(logging.CRITICAL)
@@ -926,6 +957,9 @@ class TestLayered(TestINIFileHelper, unittest.TestCase):
         # something smart.
         defaults = {'mymodule': defaults}
         cmdline = ['--home=thatdata', '--force']
+
+        o = Commandline(cmdline)
+        o.subsection("mymodule").keys()
         cfg = LayeredConfig(Defaults(defaults), Commandline(cmdline),
                             cascade=True)
         self.assertEqual(cfg.mymodule.force, True)

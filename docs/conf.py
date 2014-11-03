@@ -276,3 +276,14 @@ texinfo_documents = [
 
 intersphinx_mapping = {'python': ('http://docs.python.org/3/', None),
                        }
+
+autoclass_content = "both"
+
+# http://stackoverflow.com/a/10870416 -- just document class level
+# variables by name and docstring, not their default value
+from sphinx.ext.autodoc import ModuleLevelDocumenter, DataDocumenter
+
+def add_directive_header(self,sig):
+    ModuleLevelDocumenter.add_directive_header(self,sig)
+    # omit the rest
+DataDocumenter.add_directive_header = add_directive_header

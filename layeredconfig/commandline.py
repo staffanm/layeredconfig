@@ -6,36 +6,45 @@ except ImportError:  # pragma: no cover
     from ordereddict import OrderedDict
 from six import text_type as str
 import sys
+from copy import copy
 
 from . import ConfigSource
 
 class Commandline(ConfigSource):
+
+    rest = []
+    """The remainder of the command line, containing all parameters that
+    couldn't be turned into configuration settings. """
+    
     def __init__(self,
                  commandline=None,
                  sectionsep="-",
-                 *args, **kwargs):
-        """
-        Load configuration from command line options.
-        
-        :param commandline: The contents of sys.argv, or something
-                            similar. Any long-style parameters are
-                            turned into configuration values, and
-                            parameters with hyphens are turned into
-                            nested config objects
-                            (i.e. ``--module-parameter=foo`` results
-                            in self.module.parameter == "foo".
+                 **kwargs):
+        """Load configuration from command line options. Any long-style
+        parameters are turned into configuration values, and
+        parameters containing the section separator (by default
+        ``"-"``) are turned into nested config objects
+        (i.e. ``--module-parameter=foo`` results in
+        ``self.module.parameter == "foo"``.
+
+        :param commandline: Command line arguments, in list form like
+                            :py:data:`sys.argv`. If not provided, uses
+                            the real :py:data:`sys.argv`.
         :type  commandline: list
-        :param sectionsep: if you don't want to separate nested config
-                           objects with "-" you can specify another
-                           separator.
+        :param sectionsep: An alternate section separator instead of ``-``.
         :type  sectionsep: str
+
         """
-        super(Commandline, self).__init__(*args, **kwargs)
-        if not commandline:
-            commandline = sys.argv
+        super(Commandline, self).__init__(**kwargs)
+        if commandline is None:
+            if kwargs.get("empty"):
+                commandline = []
+            else:
+                commandline = sys.argv
         self.source = OrderedDict()
         self.sectionargvs = defaultdict(list)
         self.sectionsep = sectionsep
+        self.rest = []
         for arg in commandline:
             if isinstance(arg, bytes):
                 # FIXME: Find out proper way of finding the encoding
@@ -52,6 +61,8 @@ class Commandline(ConfigSource):
                 # they can't be called "parse-force").
                 parts = param[2:].split(sectionsep)
                 self._load_commandline_part(parts, value, self.sectionargvs)
+            else:
+                self.rest.append(arg)
 
     def _load_commandline_part(self, parts, value, sectionargvs):
         if len(parts) == 1:

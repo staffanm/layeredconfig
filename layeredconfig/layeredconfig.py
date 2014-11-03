@@ -12,12 +12,8 @@ except ImportError:  # pragma: no cover
 
 class LayeredConfig(object):
     def __init__(self, *sources, **kwargs):
-        """Creates a config object from zero or more sources.
-
-        If no sources are given, the config object is blank, but you
-        can still set values and read them back later.
-
-        Provides unified access to a nested set of configuration
+        """Creates a config object from one or more sources and provides
+        unified access to a nested set of configuration
         parameters. The source of these parameters a config file
         (using .ini-file style syntax), command line parameters, and
         default settings embedded in code. Command line parameters
@@ -26,38 +22,18 @@ class LayeredConfig(object):
 
         Configuration parameters are accessed as regular object
         attributes, not dict-style key/value pairs.  Configuration
-        parameter names should therefore be regular python identifiers
-        (i.e. only consist of alphanumerical chars and '_').
+        parameter names should therefore be regular python
+        identifiers, and preferrably avoid upper-case and "_" as well
+        (i.e. only consist of the characters a-z and 0-9)
 
         Configuration parameter values can be typed (strings,
-        integers, booleans, dates, lists...).  Even though ini-style
-        config files and command line parameters are by themselves
-        non-typed, by specifying default settings in code, parameters
-        from a config file or the commamd line can be typed.
+        integers, booleans, dates, lists...). Even though some sources
+        lack typing information (eg in INI files, command-line
+        parameters and enviroment variables, everything is a string),
+        LayeredConfig will attempt to find typing information in other
+        sources and convert data.
 
-        Example::
- 
-            >>> defaults = {'parameter': 'foo', 'other': 'default'}
-            >>> dir = tempfile.mkdtemp()
-            >>> inifile = dir + os.sep + "test.ini"
-            >>> with open(inifile, "w") as fp:
-            ...     res = fp.write("[__root__]\\nparameter = bar")
-            >>> argv = ['--parameter=baz']
-            >>> conf = LayeredConfig(Defaults(defaults), INIFile(inifile), Commandline(argv))
-            >>> conf.parameter == 'baz'
-            True
-            >>> conf.other == 'default'
-            True
-            >>> conf.parameter = 'changed'
-            >>> conf.other = 'also changed'
-            >>> LayeredConfig.write(conf)
-            >>> with open(inifile) as fp:
-            ...     res = fp.read()
-            >>> res == '[__root__]\\nparameter = changed\\nother = also changed\\n\\n'
-            True
-            >>> os.unlink(inifile)
-            >>> os.rmdir(dir)
- 
+        :param \*sources: Initialized ConfigSource-derived objects
         :param cascade: If an attempt to get a non-existing parameter
                         on a sub (nested) configuration object should
                         attempt to get the parameter on the parent
@@ -67,6 +43,7 @@ class LayeredConfig(object):
                          ``True`` by default. This does not affect
                          :py:meth:`~Layeredconfig.set`. 
         :type writable: bool
+
         """
         self._sources = sources
         self._subsections = OrderedDict()
@@ -100,13 +77,14 @@ class LayeredConfig(object):
                     s.append(src.subsection(k))
                 else:
                     # create an "empty" subsection object. It's
-                    # imported that all the LayeredConfig objects in a
+                    # important that all the LayeredConfig objects in a
                     # tree have the exact same set of
                     # ConfigSource-derived types.
                     # print("creating empty %s" % src.__class__.__name__)
                     s.append(src.__class__(parent=src,
                                            identifier=src.identifier,
                                            writable=src.writable,
+                                           empty=True,
                                            cascade=self._cascade))
             # 3. create a LayeredConfig object for the subsection
             c = LayeredConfig(*s,
@@ -120,9 +98,21 @@ class LayeredConfig(object):
 
     @staticmethod
     def write(config):
-        """Configuration parameters can be changed in code. Such changes can
-        be written to any write-enabled source (ie. some sort of
-        configuration file).
+        """Commits any pending modifications, ie save a configuration file if
+        it has been marked "dirty" as a result of an normal
+        assignment. The modifications are written to the first
+        writable source in this config object.
+
+        .. note:: 
+
+           This is a static method, ie not a method on any object
+           instance. This is because all attribute access on a
+           LayeredConfig object is meant to retrieve configuration
+           settings. 
+
+        :param config: The configuration object to save
+        :type  config: layeredconfig.LayeredConfig
+
         """
         root = config
         while root._parent:
@@ -134,7 +124,17 @@ class LayeredConfig(object):
 
     @staticmethod
     def set(config, key, value, sourceid="defaults"):
-        """Sets a value without marking the config file dirty"""
+        """Sets a value in this config object *without* marking any source
+        dirty, and with exact control of exactly where to set the
+        value. This is mostly useful for low-level trickery with
+        config objects.
+
+        :param config: The configuration object to set values on
+        :param key: The parameter name
+        :param value: The new value
+        :param sourceid: The identifier for the underlying source that the 
+                         value should be set on.
+        """
         for source in config._sources:
             if source.identifier == sourceid:
                 source.set(key, value)
@@ -142,7 +142,10 @@ class LayeredConfig(object):
 
     @staticmethod
     def get(config, key, default=None):
-        """Works like dict.get."""
+        """Gets a value from the config object, or return a default value if
+        the parameter does not exist, like :py:meth:`dict.get` does.
+        """
+
         if hasattr(config, key):
             return getattr(config, key)
         else:
@@ -152,7 +155,9 @@ class LayeredConfig(object):
 #        
 #    @staticmethod
 #    def where(config, key):
-#        """returns the identifier of a source where a given key is found, or None."""
+#
+
+        """returns the identifier of a source where a given key is found, or None."""
 #        pass
 #
 #    @staticmethod
@@ -181,10 +186,7 @@ class LayeredConfig(object):
                 l.add(k)
                 yield k
 
-    # FIXME: try to use __getattrib__
-    def __getattribute__(self, name):
-        if name.startswith("_"):
-            return object.__getattribute__(self, name)
+    def __getattr__(self, name):
 
         if name in self._subsections:
             return self._subsections[name]
@@ -231,7 +233,7 @@ class LayeredConfig(object):
                     return source.get(name)
         else:
             if self._cascade and self._parent:
-                return self._parent.__getattribute__(name)
+                return self._parent.__getattr__(name)
         
         raise AttributeError("Configuration key %s doesn't exist" % name)
 

@@ -1,9 +1,19 @@
 # this should possibly be a abstract class as well
 from . import ConfigSource
 
+
 class DictSource(ConfigSource):
-    def __init__(self, *args, **kwargs):
-        super(DictSource, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        """If your backend data is exposable as a python dict, you can
+        subclass from this class to avoid implementing :py:meth:`has`,
+        :py:meth:`get`, :py:meth:`keys`, :py:meth:`subsection` and
+        :py:meth:`subsections`. You only need to write
+        :py:meth:`__init__` (which should set ``self.source`` to that
+        exposed dict), and possibly :py:meth:`typed` and
+        :py:meth:`save`.
+
+        """
+        super(DictSource, self).__init__(**kwargs)
         self.source = {}
 
     def subsections(self):
@@ -26,19 +36,12 @@ class DictSource(ConfigSource):
         # if we have it, we can type it
         return key in self.source        
 
-
     def has(self, key):
         # should has return true for types or only for real values?
         return key in self.source and not isinstance(self.source[key], type)
 
     def get(self, key):
-#        if key in self.source:
         return self.source[key]
-#        elif self.cascade and self.parent:
-#            return self.parent.get(key)
-#        else:
-#            # crash and burn -- we know that key WON'T be in self.source
-#            self.source[key]
 
     def set(self, key, value):
         self.source[key] = value

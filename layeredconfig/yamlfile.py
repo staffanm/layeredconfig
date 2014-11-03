@@ -4,10 +4,25 @@ import yaml
 
 from . import DictSource
 
-
 class YAMLFile(DictSource):
-    def __init__(self, yamlfilename=None, writable=True, *args, **kwargs):
-        super(YAMLFile, self).__init__(*args, **kwargs)
+    def __init__(self, yamlfilename=None, writable=True, **kwargs):
+        """Loads and optionally saves configuration files in YAML
+        format. Since YAML (and the library implementing the support,
+        PyYAML) has automatic support for typed values, data from this
+        source are typed.
+
+        :param yamlfile: The name of a YAML file. Nested
+                         sections are turned into nested config objects.
+        :type yamlfile: str
+        :param writable: Whether changes to the LayeredConfig object
+                         that has this YAMLFile object amongst its
+                         sources should be saved in the YAML file.
+        :type writable: bool
+
+        """
+
+
+        super(YAMLFile, self).__init__(**kwargs)
         if 'defaults' in kwargs:
             self.source = kwargs['defaults']
         else:

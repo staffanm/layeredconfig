@@ -17,8 +17,8 @@ using command lines:
   :end-before: # end import-2
 		
 Each configuration source must be initialized in some way. The
-:py:class:`~layeredconfig.Default` source takes a dict, possibly
-nested:
+:py:class:`~layeredconfig.Defaults` source takes a :py:class:`dict`,
+possibly nested:
 
 .. literalinclude:: examples/usage.py
   :start-after: # begin defaults
@@ -35,7 +35,7 @@ takes the name of a file. In this example, we use a INI-style file.
 
    LayeredConfig uses the :py:mod:`configparser` module, which
    requires that each setting is placed within a section. By default,
-   settings placed within the ``[DEFAULT]`` section.
+   top-level settings are placed within the ``[__root__]`` section.
 
    In this example, we assume that there is a file called
    ``myapp.ini`` within the current directory with the following
@@ -43,15 +43,15 @@ takes the name of a file. In this example, we use a INI-style file.
 
    .. literalinclude:: examples/myapp.ini
 
-The :py:class:`~layeredconfig.Environment` uses environment variables
-as the source of settings. Since the entire environment is not
-suitable to use as a configuration, use of this source requires that a
-``prefix`` is given. Only environment variables starting with this
-prefix is used. Furthermore, since the name of environment variable
-typically uses uppercase, they are by default lowercased by this
-source. This means that, in this example, the value of the
-environmentvariable ``MYAPP_HOME`` will be available as the
-configuration setting ``home``.
+The :py:class:`~layeredconfig.Environment` source uses environment
+variables as settings. Since the entire environment is not suitable to
+use as a configuration, use of this source requires that a ``prefix``
+is given. Only environment variables starting with this prefix are
+used. Furthermore, since the name of environment variable typically
+uses uppercase, they are by default lowercased by this source. This
+means that, in this example, the value of the environmentvariable
+``MYAPP_HOME`` will be available as the configuration setting
+``home``.
 
 .. literalinclude:: examples/usage.py
   :start-after: # begin environment
@@ -75,31 +75,35 @@ actual configuration object:
   :start-after: # begin makeconfig
   :end-before: # end makeconfig
 
-And we use the config object like this:
+And we use the attributes on the config object to access the settings:
 	      
 .. literalinclude:: examples/usage.py
   :start-after: # begin useconfig
   :end-before: # end useconfig
 
 
+.. _precedence:
+
 Precedence
 ----------
 
-A simple precedence system determines which setting is actually
-used. In the above example, the printed string is "MyApp starting,
-home in /opt/myapp". This is because while ``name`` was specified only
-by the mydefaults source, ``home`` was specified by source with higher
+Since several sources may contain a setting, A simple precedence
+system determines which setting is actually used. In the above
+example, the printed string is ``"MyApp starting, home in
+/opt/myapp"``. This is because while ``name`` was specified only by the
+mydefaults source, ``home`` was specified by source with higher
 predecence (``mycmdline``). The order of sources passed to
 LayeredConfig determines predecence, with the last source having the
 highest predecence.
 
+.. _configsources:
 
 Config sources
 --------------
 
 Apart from the sources used above, there are classes for settings
 stored in JSON files, YAML files and PList files. Each source can to
-varying extent be configured with different parameters. See :doc:`api`
+varying extent be configured with different parameters. See :doc:`sources`
 for further details. 
 
 You can also use a single source class multiple times, for example to have
@@ -110,8 +114,12 @@ It's possible to write your own
 :py:class:`~layeredconfig.ConfigSource`-based class to read (and
 possibly write) from any concievable kind of source.
 
+.. _typing:
+
 Typing
 ------
+
+The values retrieved can have many different types -- not just strings.
 
 .. literalinclude:: examples/usage.py
   :start-after: # begin usetyping
@@ -119,13 +127,14 @@ Typing
 
 If a particular source doesn't contain intrinsic typing information,
 other sources can be used to find out what type a particular setting
-should be, and data is automatically converted.
+should be. LayeredConfig converts the data automatically.
 
 .. note::
 
-   string are always unicode strings (``str`` in python 3, ``unicode``
-   in python 2). They are never byte sequences (``bytes`` in python 3,
-   ``str`` in python 2)
+   string are always :py:class:`str` objects, (``unicode`` in python
+   2). They are never :py:class:`bytes` objects (``str`` in python 2)
+
+.. _subsection:
 
 Subsections
 -----------
@@ -135,6 +144,8 @@ It's possible to divide up settings and group them in subsections.
 .. literalinclude:: examples/usage.py
   :start-after: # begin usesubconfig
   :end-before: # end usesubconfig
+
+.. _cascading:
 
 Cascading
 ---------
@@ -147,13 +158,15 @@ sections.
   :start-after: # begin usecascade
   :end-before: # end usecascade
 
+.. _modification:
+
 Modification and persistance
 ----------------------------
 
 It's possible to change a setting in a config object. It's also
 possible to write out the changed settings to a config source
-(ie. configuration files).
-
+(ie. configuration files) by calling
+:py:meth:`~layeredconfig.LayeredConfig.write`
 
 .. literalinclude:: examples/usage.py
   :start-after: # begin writeconfig

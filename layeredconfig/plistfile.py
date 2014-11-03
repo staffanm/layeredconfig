@@ -9,14 +9,28 @@ from . import DictSource
 
 
 class PListFile(DictSource):
-    def __init__(self, plistfilename=None, writable=True, *args, **kwargs):
+    def __init__(self, plistfilename=None, writable=True, **kwargs):
+        """Loads and optionally saves configuration files in PList
+        format. Since PList has some support for typed values (supports
+        numbers, lists, bools, datetimes *but not dates*), data from
+        this source are sometimes typed, sometimes only available as
+        strings.
+
+        :param plistfile: The name of a PList file. Nested sections are 
+                          turned into nested config objects.
+        :type plistfile: str
+        :param writable: Whether changes to the LayeredConfig object
+                         that has this PListFile object amongst its
+                         sources should be saved in the PList file.
+        :type writable: bool
+        """
         if sys.version_info >= (3,4):
             self.reader = plistlib.load
             self.writer = plistlib.dump
         else:
             self.reader = plistlib.readPlist
             self.writer = plistlib.writePlist
-        super(PListFile, self).__init__(*args, **kwargs)
+        super(PListFile, self).__init__(**kwargs)
         if 'defaults' in kwargs:
             self.source = kwargs['defaults']
         else:

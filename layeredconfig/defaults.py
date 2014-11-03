@@ -1,7 +1,7 @@
 from . import DictSource
 
 class Defaults(DictSource):
-    def __init__(self, defaults=None, *args, **kwargs):
+    def __init__(self, defaults=None, **kwargs):
         """
         This source is initialized with a dict.
 
@@ -10,7 +10,7 @@ class Defaults(DictSource):
                          nested config objects.
         :type defaults: dict
         """
-        super(Defaults, self).__init__(*args, **kwargs)
+        super(Defaults, self).__init__(**kwargs)
         if defaults:
             self.source = defaults
             # if not, DictSource.__init__ ensures that self.source is

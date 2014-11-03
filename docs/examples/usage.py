@@ -27,14 +27,16 @@ myinifile = INIFile("myapp.ini")
 # end inifile
 
 # begin environment
-myenv = Environment({'MYAPP_HOME': 'C:\\Progra~1\\MyApp',
-                     'MYAPP_SUBMODULE_RETRY': 'True'}, prefix="MYAPP_")
+env = {'MYAPP_HOME': 'C:\\Progra~1\\MyApp',
+       'MYAPP_SUBMODULE_RETRY': 'True'}
+myenv = Environment(env, prefix="MYAPP_")
 # end environment
 
 # begin commandline
 mycmdline = Commandline(['-f', '--home=/opt/myapp', '--times=2', '--dostuff'])
 rest = mycmdline.rest
 # end commandline
+assert rest == ['-f']
 
 # begin makeconfig
 cfg = LayeredConfig(mydefaults,
@@ -43,7 +45,6 @@ cfg = LayeredConfig(mydefaults,
                     mycmdline)
 # end makeconfig
 import os
-import datetime
 def do_stuff(action, idx):
     pass
 
@@ -52,7 +53,7 @@ print("%s starting, home in %s" % (cfg.name, cfg.home))
 # end useconfig
 
 # begin usetyping
-delay = date.today - cfg.duedate  # date
+delay = date.today() - cfg.duedate  # date
 if cfg.dostuff: # bool
     for i in range(cfg.times):  # int
         print(", ".join(cfg.things))  # list
@@ -64,18 +65,20 @@ if subcfg.retry:
     print(subcfg.lastrun.isoformat())
 # end usesubconfig
 
-# begin usecascade
-
 try:
     print(subcfg.home)
 except AttributeError:
     pass
 
+# begin usecascade
 cfg = LayeredConfig(mydefaults, myinifile, myenv, mycmdline, cascade=True)
 subcfg = cfg.submodule
 print(subcfg.home)
+# end usecascade
 
 # begin writeconfig
 subcfg.lastrun = datetime.now()
 LayeredConfig.write(cfg)
 # end writeconfig
+
+return_value = True

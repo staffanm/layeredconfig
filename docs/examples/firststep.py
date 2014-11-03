@@ -17,9 +17,11 @@ hello = kitty
 """)
 
 # 3. enironment variables
+import os
 os.environ['MYAPP_HELLO'] = 'goodbye'
 
 # 4.command-line arguments
+import sys
 sys.argv = ['./myapp.py', '--hello=world']
 
 # Create a config object that gets settings from these four
@@ -32,3 +34,6 @@ config = LayeredConfig(Defaults(defaults),
 # Prints "Hello world!", i.e the value provided by command-line
 # arguments. Latter sources take precedence over earlier sources.
 print("Hello %s!" % config.hello)
+# end firststep
+
+return_value = True
