@@ -2,7 +2,7 @@
 
 __author__ = 'Staffan Malmgren'
 __email__ = 'staffan.malmgren@gmail.com'
-__version__ = "0.1.0"
+__version__ = "0.1.1.dev1"
 
 from .layeredconfig import LayeredConfig
 from .configsource import ConfigSource
