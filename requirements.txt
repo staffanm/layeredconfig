@@ -3,3 +3,4 @@ ordereddict
 wheel
 six
 PyYAML
+twine
