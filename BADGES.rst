@@ -17,4 +17,4 @@
 .. image:: https://pypip.in/d/layeredconfig/badge.png
    :target: https://pypi.python.org/pypi/layeredconfig
 
-*Full documentation: https://layeredconfig.readthedocs.org/*
+Full documentation: https://layeredconfig.readthedocs.org/
