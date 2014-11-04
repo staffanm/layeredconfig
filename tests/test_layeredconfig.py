@@ -8,25 +8,29 @@ test_layeredconfig
 Tests for `layeredconfig` module.
 """
 
+
 import os
 import logging
 import sys
-if sys.version_info < (2, 7, 0):  # pragma: no cover
-    import unittest2 as unittest
-else: 
-    import unittest
 import codecs
 from six import text_type as str
 from datetime import date, datetime
+import argparse
 try:
     from collections import OrderedDict
 except ImportError:  # pragma: no cover
     # if on python 2.6
     from ordereddict import OrderedDict
 
+if sys.version_info < (2, 7, 0):  # pragma: no cover
+    import unittest2 as unittest
+else: 
+    import unittest
+
 # The system under test
 from layeredconfig import (LayeredConfig, Defaults, INIFile, JSONFile,
-                           YAMLFile, PListFile, Environment, Commandline)
+                           YAMLFile, PListFile, Environment, Commandline,
+                           Argparser)
 
 
 class TestConfigSourceHelper(object):
@@ -769,6 +773,58 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper,
                                date_type=str,
                                datetime_type=str)
 
+
+class TestArgparser(unittest.TestCase, TestConfigSourceHelper,
+                    TestLayeredConfigHelper):
+
+    simpleparser = argparse.ArgumentParser(description="This is a simple program")
+    simpleparser.add_argument('--home', help="The home directory of the app")
+    simpleparser.add_argument('--processes', type=int, help="Number of simultaneous processes")
+    simpleparser.add_argument('--force', action='store_true') # how to specify --force=False?
+    simpleparser.add_argument('--extra', action='append')
+    simpleparser.add_argument('--expires', type=date)
+    simpleparser.add_argument('--lastrun', type=datetime)
+    simpleparser.add_argument('--unused')
+
+    simple = Argparser(simpleparser,
+                       ['--home=mydata',
+                        '--processes=4',
+                        '--force',  # note implicit boolean typing
+                        '--extra=foo',
+                        '--extra=bar',
+                        '--expires=2014-10-15',
+                        '--lastrun=2014-10-15 14:32:07'])
+
+    complex = Commandline(['--home=mydata',
+                           '--processes=4',
+                           '--force=True',
+                           '--extra=foo',
+                           '--extra=bar',
+                           '--mymodule-force=False',
+                           '--mymodule-extra=foo',
+                           '--mymodule-extra=baz',
+                           '--mymodule-expires=2014-10-15',
+                           '--mymodule-arbitrary-nesting-depth=works',
+                           '--extramodule-unique'])
+
+    def test_argparse(self):
+        cfg = LayeredConfig(self.simple)
+        self.simple.setup(cfg)
+        self._test_mainsection(cfg,
+                               int_type=str,
+                               date_type=str,
+                               datetime_type=str, 
+                               bool_type=bool,  # not always, see below
+                               list_type=list)
+
+    def test_argparse_subsections(self):
+        cfg = LayeredConfig(self.complex)
+        self._test_subsections(cfg,
+                               int_type=str,
+                               bool_type=str,  # "--mymodule-force=False"
+                               list_type=list,
+                               date_type=str,
+                               datetime_type=str)
 
 class TestEnvironment(unittest.TestCase, TestConfigSourceHelper, TestLayeredConfigHelper):
 
