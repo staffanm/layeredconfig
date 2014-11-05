@@ -48,7 +48,7 @@ parser.add_argument("file", metavar="FILE", help="The filename to process")
 # end argparse
 
 # begin layeredconfig
-sys.argv = ['./myapp.py', '--home=/opt/myapp', '--dostuff', 'file.txt']
+sys.argv = ['./myapp.py', '--home=/opt/myapp', '-t=2', '--dostuff', 'file.txt']
 cfg = LayeredConfig(defaults,
                     inifile,
                     Commandline(parser=parser))
