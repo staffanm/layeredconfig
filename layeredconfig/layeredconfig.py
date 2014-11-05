@@ -2,7 +2,7 @@
 
 import itertools
 import logging
-
+from datetime import datetime, date
 
 try:
     from collections import OrderedDict
@@ -68,7 +68,6 @@ class LayeredConfig(object):
                 # because it's an "empty" source. Well, that's ok.
                 pass
                 
-
         for k in sectionkeys:
             # 2. find all subsections in all of our sources
             s = []
@@ -93,8 +92,10 @@ class LayeredConfig(object):
             c._sectionkey = k
             c._parent = self
             self._subsections[k] = c
-            
-        # cascade=False, writable=True,
+
+        # 4. give each source a chance to to some post-init setup.
+        for src in self._sources:
+            src.setup(self)
 
     @staticmethod
     def write(config):
@@ -169,6 +170,31 @@ class LayeredConfig(object):
 #    def load(config, d):
 #        """Recreates a dump()ed config object."""
 #        pass
+
+    @staticmethod
+    def datetimeconvert(value):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+        except ValueError:
+            return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+
+
+    @staticmethod
+    def dateconvert(value):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+
+    @staticmethod
+    def boolconvert(value):
+        # not all bools should be converted, see test_typed_commandline
+        if value == "True":
+            return True
+        elif value == "False":
+            return False
+        else:
+            return value
 
     def __iter__(self):
         l = set()

@@ -2,6 +2,8 @@ from abc import ABCMeta, abstractmethod
 from datetime import date, datetime
 import ast
 
+from . import LayeredConfig
+
 class ConfigSource(object):
     __metaclass__ = ABCMeta
 
@@ -139,7 +141,24 @@ class ConfigSource(object):
         """
         pass  # pragma: no cover
 
+    def setup(self, config):
+        """Perform some post-initialization setup. This method will be called
+        by the LayeredConfig constructor after its internal initialization is
+        finished, with itself as argument. Sources may access all properties
+        of the config object in order to eg. find out which parameters have
+        been defined.
+
+        The sources will be called in the same order as they were
+        provided to the LayeredConfig constructior, ie. lowest
+        precedence first.
+
+        :param config: The initialized config object that this source is a part of
+        :type config: layeredconfig.LayeredConfig
+        """
+        pass
+
     def save(self):
+
         """Persist changed data to the backend. This generally means to update
         a loaded configuration file with all changed data, or similar.
 
@@ -158,15 +177,6 @@ class ConfigSource(object):
 
         """
 
-        def boolconvert(value):
-            # not all bools should be converted, see test_typed_commandline
-            if value == "True":
-                return True
-            elif value == "False":
-                return False
-            else:
-                return value
-            
         def listconvert(value):
             # this function might be called with both string
             # represenations of entire lists and simple (unquoted)
@@ -185,18 +195,6 @@ class ConfigSource(object):
                 else:
                     return value
 
-        def datetimeconvert(value):
-            try:
-                return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
-            except ValueError:
-                return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-
-        def dateconvert(value):
-            try:
-                return datetime.strptime(value, "%Y-%m-%d").date()
-            except ValueError:
-                return datetime.strptime(value, "%Y-%m-%d").date()
-
         # self.get(key) should never fail
         default = self.get(key)
         if type(default) == type:
@@ -207,13 +205,13 @@ class ConfigSource(object):
             t = type(default)
 
         if t == bool:
-            t = boolconvert
+            t = LayeredConfig.boolconvert
         elif t == list:
             t = listconvert
         elif t == date:
-            t = dateconvert
+            t = LayeredConfig.dateconvert
         elif t == datetime:
-            t = datetimeconvert
+            t = LayeredConfig.datetimeconvert
         # print("Converting %r to %r" % (value,t(value)))
         return t(value)
 

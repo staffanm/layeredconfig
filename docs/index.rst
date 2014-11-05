@@ -15,6 +15,7 @@ backends, and makes it available to your code in a simple way.
 
    readme
    usage
+   argparse
    api
    sources
    configsource
