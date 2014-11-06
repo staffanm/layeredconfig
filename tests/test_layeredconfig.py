@@ -31,10 +31,93 @@ else:
 from layeredconfig import (LayeredConfig, Defaults, INIFile, JSONFile,
                            YAMLFile, PListFile, Environment, Commandline)
 
-class TestConfigSourceHelper(object):
+
+class TestLayeredConfigHelper(object):
     # Testcases for less-capable sources may override this
     supported_types = (str, int, bool, list, date, datetime)
     supports_nesting = True
+
+    def _test_config_singlesection(self, cfg):
+        self.assertIs(type(cfg.home), str)
+        self.assertEqual(cfg.home, 'mydata')
+
+        int_type = int if int in self.supported_types else str
+        self.assertIs(type(cfg.processes), int_type)
+        self.assertEqual(cfg.processes, int_type(4))
+
+        bool_type = bool if bool in self.supported_types else str
+        self.assertIs(type(cfg.force), bool_type)
+        self.assertEqual(cfg.force, bool_type(True))
+
+        if list in self.supported_types:
+            list_type = list
+            list_want = ['foo', 'bar']
+        else:
+            list_type = str
+            list_want = "foo, bar"  # recommended list serialization
+        self.assertIs(type(cfg.extra), list_type)
+        self.assertEqual(cfg.extra, list_want)
+
+        if date in self.supported_types:
+            date_type = date
+            date_want = date(2014, 10, 15)
+        else:
+            date_type = str
+            date_want = "2014-10-15" # recommended date serialization
+        self.assertIs(type(cfg.expires), date_type)
+        self.assertEqual(cfg.expires, date_want)
+
+        if datetime in self.supported_types:
+            datetime_type = datetime
+            datetime_want = datetime(2014, 10, 15, 14, 32, 7)
+        else:
+            datetime_type = str
+            datetime_want = "2014-10-15 14:32:07"
+        self.assertIs(type(cfg.lastrun), datetime_type)
+        self.assertEqual(cfg.lastrun, datetime_want)
+
+    def _test_config_subsections(self, cfg):
+        self.assertEqual(cfg.home, 'mydata')
+        with self.assertRaises(AttributeError):
+            cfg.mymodule.home
+
+        int_type = int if int in self.supported_types else str
+        self.assertEqual(cfg.processes, int_type(4))
+        with self.assertRaises(AttributeError):
+            cfg.mymodule.processes
+
+        bool_type = bool if bool in self.supported_types else str
+        self.assertEqual(cfg.force, bool_type(True))
+        self.assertEqual(cfg.mymodule.force, bool_type(False))
+
+        if list in self.supported_types:
+            list_type = list
+            list_want = ['foo', 'bar']
+            list_want_sub = ['foo', 'baz']
+        else:
+            list_type = str
+            list_want = "foo, bar"
+            list_want_sub = "foo, baz"
+        self.assertEqual(cfg.extra, list_want)
+        self.assertEqual(cfg.mymodule.extra, list_want_sub)
+
+        # not supported for INIFile
+        if self.supports_nesting:
+            self.assertEqual(cfg.mymodule.arbitrary.nesting.depth, 'works')
+
+        with self.assertRaises(AttributeError):
+            cfg.expires
+
+        if date in self.supported_types:
+            date_type = date
+            date_want = date(2014, 10, 15)
+        else:
+            date_type = str
+            date_want = "2014-10-15" # recommended date serialization
+        self.assertEqual(cfg.mymodule.expires, date_want)
+
+
+class TestConfigSourceHelper(TestLayeredConfigHelper):
 
     # First, a number of straightforward tests for any
     # ConfigSource-derived object. Concrete test classes should set up
@@ -88,86 +171,11 @@ class TestConfigSourceHelper(object):
         # each subclass is responsible for creating a self.simple
         # object of the type being tested
         cfg = LayeredConfig(self.simple)
-
-        self.assertIs(type(cfg.home), str)
-        self.assertEqual(cfg.home, 'mydata')
-
-        int_type = int if int in self.supported_types else str
-        self.assertIs(type(cfg.processes), int_type)
-        self.assertEqual(cfg.processes, int_type(4))
-
-        bool_type = bool if bool in self.supported_types else str
-        self.assertIs(type(cfg.force), bool_type)
-        self.assertEqual(cfg.force, bool_type(True))
-
-        if list in self.supported_types:
-            list_type = list
-            list_want = ['foo', 'bar']
-        else:
-            list_type = str
-            list_want = "foo, bar"  # recommended list serialization
-        self.assertIs(type(cfg.extra), list_type)
-        self.assertEqual(cfg.extra, list_want)
-
-        if date in self.supported_types:
-            date_type = date
-            date_want = date(2014, 10, 15)
-        else:
-            date_type = str
-            date_want = "2014-10-15" # recommended date serialization
-        self.assertIs(type(cfg.expires), date_type)
-        self.assertEqual(cfg.expires, date_want)
-
-        if datetime in self.supported_types:
-            datetime_type = datetime
-            datetime_want = datetime(2014, 10, 15, 14, 32, 7)
-        else:
-            datetime_type = str
-            datetime_want = "2014-10-15 14:32:07"
-        self.assertIs(type(cfg.lastrun), datetime_type)
-        self.assertEqual(cfg.lastrun, datetime_want)
+        self._test_config_singlesection(cfg)
 
     def test_config_subsections(self):
         cfg = LayeredConfig(self.complex)
-
-        self.assertEqual(cfg.home, 'mydata')
-        with self.assertRaises(AttributeError):
-            cfg.mymodule.home
-
-        int_type = int if int in self.supported_types else str
-        self.assertEqual(cfg.processes, int_type(4))
-        with self.assertRaises(AttributeError):
-            cfg.mymodule.processes
-
-        bool_type = bool if bool in self.supported_types else str
-        self.assertEqual(cfg.force, bool_type(True))
-        self.assertEqual(cfg.mymodule.force, bool_type(False))
-
-        if list in self.supported_types:
-            list_type = list
-            list_want = ['foo', 'bar']
-            list_want_sub = ['foo', 'baz']
-        else:
-            list_type = str
-            list_want = "foo, bar"
-            list_want_sub = "foo, baz"
-        self.assertEqual(cfg.extra, list_want)
-        self.assertEqual(cfg.mymodule.extra, list_want_sub)
-
-        # not supported for INIFile
-        if self.supports_nesting:
-            self.assertEqual(cfg.mymodule.arbitrary.nesting.depth, 'works')
-
-        with self.assertRaises(AttributeError):
-            cfg.expires
-
-        if date in self.supported_types:
-            date_type = date
-            date_want = date(2014, 10, 15)
-        else:
-            date_type = str
-            date_want = "2014-10-15" # recommended date serialization
-        self.assertEqual(cfg.mymodule.expires, date_want)
+        self._test_config_subsections(cfg)
 
 
 # common helper
@@ -710,7 +718,7 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
         self.assertEqual(self.simple.get("home"), "mydata")
         self.assertEqual(self.simple.get("processes"), "4")
         self.assertEqual(self.simple.get("force"), True)
-        self.assertEqual(self.simple.get("extra"), ['foo','bar']) # note typed!
+        self.assertEqual(self.simple.get("extra"), ['foo','bar'])  # note typed!
         self.assertEqual(self.simple.get("expires"), "2014-10-15")
         self.assertEqual(self.simple.get("lastrun"), "2014-10-15 14:32:07")
 
@@ -720,7 +728,8 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
             if key in ("force", "extra"):
                 self.assertTrue(self.simple.typed(key))
             else:
-                self.assertFalse(self.simple.typed(key))                
+                self.assertFalse(self.simple.typed(key))
+
 
     def test_config_subsections(self):
         # this case uses valued parameter for --force et al, which
@@ -768,6 +777,10 @@ class TestCommandlineConfigured(TestCommandline):
         # re-enable the original impl of test_config_subsections
         TestConfigSourceHelper.test_config_subsections(self)
 
+    def test_typed(self):
+        # re-enable the original impl of test_get
+        TestConfigSourceHelper.test_typed(self)
+
 
 class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
 
@@ -804,7 +817,7 @@ class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
             self.assertFalse(self.simple.typed(key))
 
 
-class TestTyping(unittest.TestCase):
+class TestTyping(unittest.TestCase, TestLayeredConfigHelper):
     types = {'home': str,
              'processes': int,
              'force': bool,
@@ -830,10 +843,7 @@ class TestTyping(unittest.TestCase):
                    '--mymodule-arbitrary-nesting-depth=works',
                    '--extramodule-unique']
         cfg = LayeredConfig(Defaults(self.types), Commandline(cmdline))
-        # FIXME: find a neat way to run the tests in
-        # test_config_subsections with a LayeredConfig object that uses a
-        # Default object for typing
-        TestConfigSourceHelper.test_config_subsections(self, cfg)
+        self._test_config_subsections(cfg)
         self.assertTrue(cfg.implicitboolean)
         self.assertIs(type(cfg.implicitboolean), bool)
 
@@ -884,8 +894,8 @@ class TestTyping(unittest.TestCase):
 
 
 class TestTypingINIFile(TestINIFileHelper,
+                        TestLayeredConfigHelper,
                         unittest.TestCase):
-    
     types = {'home': str,
              'processes': int,
              'force': bool,
@@ -904,7 +914,7 @@ class TestTypingINIFile(TestINIFileHelper,
         cfg = LayeredConfig(Defaults(self.types), INIFile("complex.ini"))
         self.supported_types = (str, bool, int, list, date, datetime)
         self.supports_nesting = False
-        TestConfigSourceHelper.test_config_subsections(self, cfg)
+        self._test_config_subsections(cfg)
 
 
 class TestLayered(TestINIFileHelper, unittest.TestCase):
@@ -921,7 +931,7 @@ class TestLayered(TestINIFileHelper, unittest.TestCase):
         self.assertEqual(cfg.home, 'yourdata')
         cfg = LayeredConfig(Defaults(defaults), INIFile("simple.ini"),
                             Environment(env, prefix="MYAPP_"),
-                            Commandline(cmdline))
+                           Commandline(cmdline))
         self.assertEqual(cfg.home, 'anotherplace')
         self.assertEqual(['home', 'processes', 'force', 'extra', 'expires',
                           'lastrun'], list(cfg))
@@ -997,8 +1007,6 @@ class TestModifications(TestINIFileHelper, unittest.TestCase):
         self.globalconf.base.download_text
         # this shouldn't, either
         self.globalconf.base.download_text = "WHAT"
-
-        
 
     def test_write_noconfigfile(self):
         cfg = LayeredConfig(Defaults({'lastrun':

@@ -1,6 +1,8 @@
 import sys
 import argparse
 
+from six import text_type as str
+
 from . import ConfigSource
 
 class Commandline(ConfigSource):
@@ -96,8 +98,6 @@ class Commandline(ConfigSource):
                 self.source, self.rest = self.parser.parse_known_args(self.commandline)
 
     def setup(self, config):
-        """(Re-)initialize the parser now that we know more (typing, 
-        default values)"""
         if not self.parser:
             # we're in an empty subsection object
             return 
@@ -125,13 +125,14 @@ class Commandline(ConfigSource):
         self.source, self.rest = self.parser.parse_known_args(self.commandline)
 
     def keys(self):
-        for arg in vars(self.source).keys():
-            if arg.startswith(self.sectionkey) and getattr(self.source, arg) is not None:
-                k = arg[len(self.sectionkey):]
-                if k.startswith("_"):
-                    k = k[1:]
-                if "_" not in k and getattr(self.source, arg) is not None:
-                    yield k
+        if self.source:
+            for arg in vars(self.source).keys():
+                if arg.startswith(self.sectionkey) and getattr(self.source, arg) is not None:
+                    k = arg[len(self.sectionkey):]
+                    if k.startswith("_"):
+                        k = k[1:]
+                    if "_" not in k and getattr(self.source, arg) is not None:
+                        yield k
 
     def has(self, key):
         if self.sectionkey:
@@ -189,8 +190,14 @@ class Commandline(ConfigSource):
         raise NotImplementedError
 
     def typed(self, key):
-        # a provided parser (not a bootstrapped parser) should be able
-        # to convert input to typed data -- but only those things that
-        # it actually has
-        return self._provided_parser and self.has(key)
+        if self._provided_parser:
+            # a provided parser (not a bootstrapped parser) should be able
+            # to convert input to typed data -- but only those things that
+            # it actually has
+            return self.has(key)
+        else:
+            # a boostrapped parser will support typing for bool
+            # (valueless args) and lists (multiple args)
+            return self.has(key) and not isinstance(self.get(key), str)
+
 
