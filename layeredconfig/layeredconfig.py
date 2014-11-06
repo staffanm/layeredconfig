@@ -156,9 +156,7 @@ class LayeredConfig(object):
 #        
 #    @staticmethod
 #    def where(config, key):
-#
-
-        """returns the identifier of a source where a given key is found, or None."""
+#        """returns the identifier of a source where a given key is found, or None."""
 #        pass
 #
 #    @staticmethod
