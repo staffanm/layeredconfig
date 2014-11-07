@@ -60,7 +60,6 @@ print("Starting %s in %s for %r times (doing work: %s)" % (cfg.name,
 # end layeredconfig
 
 # begin showhelp
-# also, running your program with -h works
 sys.argv = ['./myapp.py', '-h']
 cfg = LayeredConfig(defaults,
                     inifile,
