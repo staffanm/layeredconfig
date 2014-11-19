@@ -57,3 +57,14 @@ class Examples(unittest.TestCase):
             devnull.close()
         os.unlink("myapp.ini")
 
+    def test_pyfile(self):
+        shutil.copy2("docs/examples/pyfile-example.py", os.getcwd())
+        shutil.copy2("docs/examples/conf.py", os.getcwd())
+        shutil.copy2("docs/examples/pyfile-example2.py", os.getcwd())
+        shutil.copy2("docs/examples/defaults.py", os.getcwd())
+        self._test_pyfile("docs/examples/pyfile-example.py", "My App")
+        self._test_pyfile("docs/examples/pyfile-example2.py", "My App")
+        os.unlink("pyfile-example.py")
+        os.unlink("conf.py")
+        os.unlink("pyfile-example2.py")
+        os.unlink("defaults.py")

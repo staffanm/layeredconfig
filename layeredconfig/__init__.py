@@ -14,3 +14,4 @@ from .commandline import Commandline
 from .environment import Environment
 from .plistfile import PListFile
 from .yamlfile import YAMLFile
+from .pyfile import PyFile

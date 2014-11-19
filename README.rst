@@ -39,8 +39,8 @@ backends, and makes it available to your code in a simple way::
 
 * A flexible system makes it possible to specify the sources of
   configuration information, including which source takes
-  precedence. Implementations of common sources are included
-  and there is a API for writing new ones.
+  precedence. Implementations of many common sources are included and
+  there is a API for writing new ones.
 * Configuration can include subsections
   (ie. ``config.downloading.refresh``) and if a
   subsection does not contain a requested setting, it can optionally

@@ -29,3 +29,7 @@ Available sources
   :members:
   :member-order: bysource
 
+.. autoclass:: layeredconfig.PyFile
+  :members:
+  :member-order: bysource
+

@@ -171,6 +171,11 @@ class LayeredConfig(object):
 
     @staticmethod
     def datetimeconvert(value):
+        """Convert the string *value* to a :py:class:`~datetime.datetime`
+        object. *value* is assumed to be on the form "YYYY-MM-DD
+        HH:MM:SS" (optionally ending with fractions of a second).
+
+        """
         try:
             return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
         except ValueError:
@@ -179,13 +184,22 @@ class LayeredConfig(object):
 
     @staticmethod
     def dateconvert(value):
-        try:
-            return datetime.strptime(value, "%Y-%m-%d").date()
-        except ValueError:
-            return datetime.strptime(value, "%Y-%m-%d").date()
+        """Convert the string *value* to a :py:class:`~datetime.date`
+        object. *value* is assumed to be on the form "YYYY-MM-DD".
+
+        """
+        return datetime.strptime(value, "%Y-%m-%d").date()
 
     @staticmethod
     def boolconvert(value):
+        """Convert the string *value* to a boolean. ``"True"`` is converted to
+        ``True`` and ``"False"`` is converted to ``False``.
+
+        .. note:: 
+
+           If value is neither "True" nor "False", it's returned unchanged.
+
+        """
         # not all bools should be converted, see test_typed_commandline
         if value == "True":
             return True

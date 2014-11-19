@@ -131,7 +131,7 @@ should be. LayeredConfig converts the data automatically.
 
 .. note::
 
-   string are always :py:class:`str` objects, (``unicode`` in python
+   strings are always :py:class:`str` objects, (``unicode`` in python
    2). They are never :py:class:`bytes` objects (``str`` in python 2)
 
 .. _subsection:

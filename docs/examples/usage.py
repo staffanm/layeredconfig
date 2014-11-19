@@ -73,8 +73,9 @@ except AttributeError:
 # begin usecascade
 cfg = LayeredConfig(mydefaults, myinifile, myenv, mycmdline, cascade=True)
 subcfg = cfg.submodule
-print(subcfg.home)
+print(subcfg.home)  # prints '/opt/myapp', from Commandline source root section
 # end usecascade
+assert subcfg.home == '/opt/myapp'
 
 # begin writeconfig
 subcfg.lastrun = datetime.now()

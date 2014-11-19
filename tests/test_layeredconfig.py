@@ -29,7 +29,8 @@ else:
 
 # The system under test
 from layeredconfig import (LayeredConfig, Defaults, INIFile, JSONFile,
-                           YAMLFile, PListFile, Environment, Commandline)
+                           YAMLFile, PListFile, PyFile, Environment,
+                           Commandline)
 
 
 class TestLayeredConfigHelper(object):
@@ -677,6 +678,48 @@ class TestPListFile(unittest.TestCase, TestConfigSourceHelper):
         with open("complex.plist") as fp:
             got = fp.read().replace("\r\n", "\n")
         self.assertEqual(want, got)
+
+
+class TestPyFile(unittest.TestCase, TestConfigSourceHelper):
+
+    def setUp(self):
+        with open("simple.py", "w") as fp:
+            fp.write("""from __future__ import unicode_literals
+import datetime
+
+expires = datetime.date(2014,10,15)
+extra = ['foo', 'bar']
+force = True
+home = 'mydata'
+lastrun = datetime.datetime(2014,10,15,14,32,7)
+processes = 4
+""")
+        with open("complex.py", "w") as fp:
+            fp.write("""from __future__ import unicode_literals
+import datetime
+
+extra = ['foo', 'bar']
+force = True
+home = 'mydata'
+processes = 4
+
+mymodule = Subsection()
+mymodule.expires = datetime.date(2014,10,15)
+mymodule.extra = ['foo', 'baz']
+mymodule.force = False
+mymodule.arbitrary = Subsection()
+mymodule.arbitrary.nesting = Subsection()
+mymodule.arbitrary.nesting.depth = 'works'
+
+extramodule = Subsection()
+extramodule.unique = True
+""")
+        self.simple = PyFile("simple.py")
+        self.complex = PyFile("complex.py")
+
+    def tearDown(self):
+        os.unlink("simple.py")
+        os.unlink("complex.py")
 
 
 class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
