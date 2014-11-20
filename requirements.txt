@@ -1,4 +1,3 @@
-python-etcd
 PyYAML
 unittest2
 ordereddict
