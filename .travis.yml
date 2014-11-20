@@ -14,6 +14,7 @@ before_install:
   - tar xzvf etcd-v0.4.6-linux-amd64.tar.gz
   - cd etcd-v0.4.6-linux-amd64
   - ./etcd > /dev/null &
+  - cd ..
 
 install:
   - pip install -r requirements.txt
