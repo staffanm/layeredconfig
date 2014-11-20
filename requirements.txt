@@ -1,6 +1,8 @@
+etcd
+PyYAML
 unittest2
 ordereddict
 wheel
 six
-PyYAML
 twine
+

@@ -26,16 +26,19 @@ if sys.version_info < (2, 7, 0):  # pragma: no cover
     import unittest2 as unittest
 else: 
     import unittest
+import etcd
 
 # The system under test
 from layeredconfig import (LayeredConfig, Defaults, INIFile, JSONFile,
                            YAMLFile, PListFile, PyFile, Environment,
-                           Commandline)
+                           Commandline, EtcdSource)
 
 
 class TestLayeredConfigHelper(object):
+
     # Testcases for less-capable sources may override this
     supported_types = (str, int, bool, list, date, datetime)
+    transforms = {}
     supports_nesting = True
 
     def _test_config_singlesection(self, cfg):
@@ -47,8 +50,11 @@ class TestLayeredConfigHelper(object):
         self.assertEqual(cfg.processes, int_type(4))
 
         bool_type = bool if bool in self.supported_types else str
+        # ugly hack to work around the case that etcd will transform a
+        # (string) value of "True" to "true"
+        bool_transform = self.transforms.get(bool, bool_type)
         self.assertIs(type(cfg.force), bool_type)
-        self.assertEqual(cfg.force, bool_type(True))
+        self.assertEqual(cfg.force, bool_transform(True))
 
         if list in self.supported_types:
             list_type = list
@@ -88,8 +94,11 @@ class TestLayeredConfigHelper(object):
             cfg.mymodule.processes
 
         bool_type = bool if bool in self.supported_types else str
-        self.assertEqual(cfg.force, bool_type(True))
-        self.assertEqual(cfg.mymodule.force, bool_type(False))
+        # ugly hack to work around the case that etcd will transform a
+        # (string) value of "True" to "true"
+        bool_transform = self.transforms.get(bool, bool_type)
+        self.assertEqual(cfg.force, bool_transform(True))
+        self.assertEqual(cfg.mymodule.force, bool_transform(False))
 
         if list in self.supported_types:
             list_type = list
@@ -858,6 +867,65 @@ class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
     def test_typed(self):
         for key in self.simple.keys():
             self.assertFalse(self.simple.typed(key))
+
+
+# NB: This assumes that an etcd daemon is running with default
+# settings
+class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
+
+    def strlower(value):
+        return str(value).lower()
+
+    supported_types = (str,)
+    transforms = {bool: strlower}
+
+    def _clear_server(self, src):
+        x = src.read("/")
+        for child in x.children:
+            src.delete(child.key, recursive=True)
+
+    @property
+    def simple(self):
+        src = etcd.Client()
+        self._clear_server(src)
+        src.write("/home", "mydata")
+        src.write("/processes", "4")
+        src.write("/force", "True")  # it'll come back as the STRING "true" (note lower case)
+        src.write("/extra", "foo, bar")
+        src.write("/expires", "2014-10-15")
+        src.write("/lastrun", "2014-10-15 14:32:07")
+        return EtcdSource() 
+
+    @property
+    def complex(self):
+        src = etcd.Client()
+        self._clear_server(src)
+        src.write("/home", "mydata")
+        src.write("/processes", "4")
+        src.write("/force", "True")
+        src.write("/extra", "foo, bar")
+        src.write("/mymodule/force", "False")
+        src.write("/mymodule/extra", "foo, baz")
+        src.write("/mymodule/expires", "2014-10-15")
+        src.write("/mymodule/arbitrary/nesting/depth", "works")
+        src.write("/extramodule/unique", "True")
+        return EtcdSource()
+
+    def test_typed(self):
+        for key in self.simple.keys():
+            self.assertFalse(self.simple.typed(key))
+
+    def test_get(self):
+        # FIXME: This test should be able to look at supported_types
+        # like test_singlesection and test_subsections do, so derived
+        # testcase classes don't need to override it.
+        conf = self.simple
+        self.assertEqual(conf.get("home"), "mydata")
+        self.assertEqual(conf.get("processes"), "4")
+        self.assertEqual(conf.get("force"), "true")
+        self.assertEqual(conf.get("extra"), "foo, bar")
+        self.assertEqual(conf.get("expires"), "2014-10-15")
+        self.assertEqual(conf.get("lastrun"), "2014-10-15 14:32:07")
 
 
 class TestTyping(unittest.TestCase, TestLayeredConfigHelper):

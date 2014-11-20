@@ -275,6 +275,7 @@ texinfo_documents = [
 #texinfo_no_detailmenu = False
 
 intersphinx_mapping = {'python': ('http://docs.python.org/3/', None),
+                       'python-etcd': ('http://python-etcd.readthedocs.org/en/latest/', None),
                        }
 
 autoclass_content = "both"
