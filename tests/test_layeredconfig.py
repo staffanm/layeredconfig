@@ -871,6 +871,7 @@ class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
 
 # NB: This assumes that an etcd daemon is running with default
 # settings
+@unittest.skipIf("APPVEYOR" in os.environ)
 class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
 
     def strlower(value):
