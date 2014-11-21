@@ -21,13 +21,13 @@ class EtcdSource(ConfigSource):
                  ca_cert=None,
                  allow_reconnect=False,
                  **kwargs):
-        """Loads configuration from a `etcd server
+        """Loads configuration from a `etcd store
         <https://github.com/coreos/etcd>`_.
 
         Parameters have the same meaning and default values as
         :py:class:`etcd.Client`.
 
-        etcd has no concept of typed values, so all data from this
+        ``etcd`` has no concept of typed values, so all data from this
         source are returned as strings.
         """
         if kwargs.get('source'):

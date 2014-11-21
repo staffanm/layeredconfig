@@ -102,9 +102,10 @@ Config sources
 --------------
 
 Apart from the sources used above, there are classes for settings
-stored in JSON files, YAML files and PList files. Each source can to
-varying extent be configured with different parameters. See :doc:`sources`
-for further details. 
+stored in JSON files, YAML files and PList files, as well as `etcd
+stores <https://coreos.com/using-coreos/etcd>`_. Each source can to
+varying extent be configured with different parameters. See
+:doc:`sources` for further details.
 
 You can also use a single source class multiple times, for example to have
 one system-wide config file together with a user config file, where
@@ -152,7 +153,7 @@ Cascading
 
 If a particular setting is not available in a subsection,
 LayeredConfig can optionally look for the same setting in parent
-sections.
+sections if the ``cascade`` option is set.
 
 .. literalinclude:: examples/usage.py
   :start-after: # begin usecascade
