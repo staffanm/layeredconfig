@@ -15,8 +15,7 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 requirements = [
     'six',
     'PyYAML',
-    # 'etcd' has too many deps (including compiled packages) to be a
-    # mandatory requirement)
+    'requests'
 ]
 
 if sys.version_info < (2, 7, 0):

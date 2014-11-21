@@ -26,8 +26,7 @@ if sys.version_info < (2, 7, 0):  # pragma: no cover
     import unittest2 as unittest
 else: 
     import unittest
-import etcd
-
+import requests
 # The system under test
 from layeredconfig import (LayeredConfig, Defaults, INIFile, JSONFile,
                            YAMLFile, PListFile, PyFile, Environment,
@@ -871,6 +870,8 @@ class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
 
 # NB: This assumes that an etcd daemon is running with default
 # settings
+ETCD_BASE = "http://127.0.0.1:4001/v2/keys"
+
 @unittest.skipIf("APPVEYOR" in os.environ,
                  "Not running etcd dependent tests on Appveyor")
 class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
@@ -881,36 +882,34 @@ class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
     supported_types = (str,)
     transforms = {bool: strlower}
 
-    def _clear_server(self, src):
-        x = src.read("/")
-        for child in x.children:
-            src.delete(child.key, recursive=True)
+    def _clear_server(self):
+        json = requests.get(ETCD_BASE + "/").json()
+        for node in json['node']['nodes']:
+            resp = requests.delete(ETCD_BASE + "%s?recursive=true" % node['key'])
 
     @property
     def simple(self):
-        src = etcd.Client()
-        self._clear_server(src)
-        src.write("/home", "mydata")
-        src.write("/processes", "4")
-        src.write("/force", "True")  # it'll come back as the STRING "true" (note lower case)
-        src.write("/extra", "foo, bar")
-        src.write("/expires", "2014-10-15")
-        src.write("/lastrun", "2014-10-15 14:32:07")
+        self._clear_server()
+        requests.put(ETCD_BASE + "/home", data={'value': 'mydata'})
+        requests.put(ETCD_BASE + "/processes", data={'value': '4'})
+        requests.put(ETCD_BASE + "/force", data={'value': "True"})
+        requests.put(ETCD_BASE + "/extra", data={'value': "foo, bar"})
+        requests.put(ETCD_BASE + "/expires", data={'value': "2014-10-15"})
+        requests.put(ETCD_BASE + "/lastrun", data={'value': "2014-10-15 14:32:07"})
         return EtcdSource() 
 
     @property
     def complex(self):
-        src = etcd.Client()
-        self._clear_server(src)
-        src.write("/home", "mydata")
-        src.write("/processes", "4")
-        src.write("/force", "True")
-        src.write("/extra", "foo, bar")
-        src.write("/mymodule/force", "False")
-        src.write("/mymodule/extra", "foo, baz")
-        src.write("/mymodule/expires", "2014-10-15")
-        src.write("/mymodule/arbitrary/nesting/depth", "works")
-        src.write("/extramodule/unique", "True")
+        self._clear_server()
+        requests.put(ETCD_BASE + "/home", data={'value': "mydata"})
+        requests.put(ETCD_BASE + "/processes", data={'value': "4"})
+        requests.put(ETCD_BASE + "/force", data={'value': "True"})
+        requests.put(ETCD_BASE + "/extra", data={'value': "foo, bar"})
+        requests.put(ETCD_BASE + "/mymodule/force", data={'value': "False"})
+        requests.put(ETCD_BASE + "/mymodule/extra", data={'value': "foo, baz"})
+        requests.put(ETCD_BASE + "/mymodule/expires", data={'value': "2014-10-15"})
+        requests.put(ETCD_BASE + "/mymodule/arbitrary/nesting/depth", data={'value': "works"})
+        requests.put(ETCD_BASE + "/extramodule/unique", data={'value': "True"})
         return EtcdSource()
 
     def test_typed(self):

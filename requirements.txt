@@ -1,3 +1,4 @@
+requests
 PyYAML
 unittest2
 ordereddict

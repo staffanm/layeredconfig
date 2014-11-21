@@ -1,25 +1,11 @@
 import six
 from . import ConfigSource
 
-try:
-    import etcd
-except ImportError:
-    raise ImportError('python module for interacting with etcd not '
-                      'installed, you should run "pip install '
-                      'python-etcd" or similar')
-
+import requests
 
 class EtcdSource(ConfigSource):
 
-    def __init__(self,
-                 host='127.0.0.1',
-                 port=4001,
-                 read_timeout=60,
-                 allow_redirect=True,
-                 protocol='http',
-                 cert=None,
-                 ca_cert=None,
-                 allow_reconnect=False,
+    def __init__(self, baseurl="http://127.0.0.1:4001/v2/",
                  **kwargs):
         """Loads configuration from a `etcd store
         <https://github.com/coreos/etcd>`_.
@@ -33,36 +19,29 @@ class EtcdSource(ConfigSource):
         if kwargs.get('source'):
             # subsection
             self.source = kwargs['source']
-            self.sectionkey = kwargs['sectionkey'] 
-            self.values = self.source.read(self.sectionkey)
+            self.sectionkey = kwargs['sectionkey']
         else:
-            self.source = etcd.Client(host=host,
-                                      port=port,
-                                      read_timeout=read_timeout,
-                                      allow_redirect=allow_redirect,
-                                      protocol=protocol,
-                                      cert=cert,
-                                      ca_cert=ca_cert,
-                                      allow_reconnect=allow_reconnect)
+            self.source = baseurl + "keys"
             self.sectionkey = "/"
-            self.values = self.source.read(self.sectionkey)
+        resp = requests.get(self.source + self.sectionkey)
+        self.values = resp.json()['node']['nodes']
         
     def has(self, key):
-        for child in self.values.children:
-            if not child.dir and self.sectionkey + key == child.key:
+        for child in self.values:
+            if 'dir' not in child and self.sectionkey + key == child['key']:
                 return True
         return False
 
     def get(self, key):
-        for child in self.values.children:
-            if self.sectionkey + key == child.key:
-                return child.value
+        for child in self.values:
+            if self.sectionkey + key == child['key']:
+                return child['value']
         raise KeyError(key)
             
     def keys(self):
-        for child in self.values.children:
-            if not child.dir:
-                yield child.key[len(self.sectionkey):]
+        for child in self.values:
+            if 'dir' not in child:
+                yield child['key'][len(self.sectionkey):]
             
 
     def typed(self, key):
@@ -71,9 +50,9 @@ class EtcdSource(ConfigSource):
                      # types) maybe?
 
     def subsections(self):
-        for child in self.values.children:
-            if child.dir:
-                yield child.key[len(self.sectionkey):]
+        for child in self.values:
+            if 'dir' in child:
+                yield child['key'][len(self.sectionkey):]
         
     def subsection(self, key):
         prefix = self.sectionkey
@@ -82,13 +61,14 @@ class EtcdSource(ConfigSource):
         return EtcdSource(source=self.source, sectionkey=prefix+key+"/")
     
     def set(self, key=None, value=None):
-        self.parent.set() # just set dirty flag
+        self.dirty = True
+        if self.parent:
+            self.parent.set()
+        if not self.dirtyvalues:
+            self.dirtyvalues = []
         if key and value:
-            self.dirty[key] = value
+            self.dirtyvalues[key] = value
         
     def save(self):
-        for k in dirty:
-            if isinstance(dirty[k], Etcd):
-                dirty[k].save()
-            else:
-                self.source.write(k, dirty[k])
+        for k in self.dirtyvalues:
+            self.source.write(k, dirty[k])
