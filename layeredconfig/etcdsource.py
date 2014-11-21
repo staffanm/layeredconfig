@@ -43,7 +43,6 @@ class EtcdSource(ConfigSource):
             if 'dir' not in child:
                 yield child['key'][len(self.sectionkey):]
             
-
     def typed(self, key):
         return False # in etcd, all keys seem to be strings. Or can
                      # they be ints, bools and lists (JSON supported

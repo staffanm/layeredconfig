@@ -928,7 +928,117 @@ class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
         self.assertEqual(conf.get("expires"), "2014-10-15")
         self.assertEqual(conf.get("lastrun"), "2014-10-15 14:32:07")
 
+    @unittest.expectedFailure
+    def test_write(self):
+        def indexfilter(node):
+            for key in node:
+                if key == "nodes":
+                    node[key] = indexfilter(node[key])
+                elif key.endswith("Index"):
+                    del node[key]
+            return node
 
+        cfg = LayeredConfig(self.complex)
+        cfg.mymodule.expires = date(2014, 10, 24)
+        LayeredConfig.write(cfg.mymodule)
+        want = """
+{
+    "action": "get",
+    "nodes": [
+        {
+            "createdIndex": 4627,
+            "key": "/home",
+            "modifiedIndex": 4627,
+            "value": "mydata"
+        },
+        {
+            "createdIndex": 4628,
+            "key": "/processes",
+            "modifiedIndex": 4628,
+            "value": "4"
+        },
+        {
+            "createdIndex": 4629,
+            "key": "/force",
+            "modifiedIndex": 4629,
+            "value": "true"
+        },
+        {
+            "createdIndex": 4630,
+            "key": "/extra",
+            "modifiedIndex": 4630,
+            "value": "foo, bar"
+        },
+        {
+            "createdIndex": 4631,
+            "dir": true,
+            "key": "/mymodule",
+            "modifiedIndex": 4631,
+            "nodes": [
+                {
+                    "createdIndex": 4631,
+                    "key": "/mymodule/force",
+                    "modifiedIndex": 4631,
+                    "value": "false"
+                },
+                {
+                    "createdIndex": 4632,
+                    "key": "/mymodule/extra",
+                    "modifiedIndex": 4632,
+                    "value": "foo, baz"
+                },
+                {
+                    "createdIndex": 4633,
+                    "key": "/mymodule/expires",
+                    "modifiedIndex": 4633,
+                    "value": "2014-10-15"
+                },
+                {
+                    "createdIndex": 4634,
+                    "dir": true,
+                    "key": "/mymodule/arbitrary",
+                    "modifiedIndex": 4634,
+                    "nodes": [
+                        {
+                            "createdIndex": 4634,
+                            "dir": true,
+                            "key": "/mymodule/arbitrary/nesting",
+                            "modifiedIndex": 4634,
+                            "nodes": [
+                                {
+                                    "createdIndex": 4634,
+                                    "key": "/mymodule/arbitrary/nesting/depth",
+                                    "modifiedIndex": 4634,
+                                    "value": "works"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "createdIndex": 4635,
+            "dir": true,
+            "key": "/extramodule",
+            "modifiedIndex": 4635,
+            "nodes": [
+                {
+                    "createdIndex": 4635,
+                    "key": "/extramodule/unique",
+                    "modifiedIndex": 4635,
+                    "value": "true"
+                }
+            ]
+        }
+    ]
+}"""
+        want = indexfilter(json.loads(want))
+        got = indexfilter(requests.get("http://localhost:4001/v2/keys/?recursive=true").json()['node'])
+        self.assertEqual(want, got)
+
+
+        
 class TestTyping(unittest.TestCase, TestLayeredConfigHelper):
     types = {'home': str,
              'processes': int,
