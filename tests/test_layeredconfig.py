@@ -883,7 +883,7 @@ class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
     transforms = {bool: strlower}
 
     def _clear_server(self):
-        resp = requests.get(ETCD_BASE + "/").json()
+        resp = requests.get(ETCD_BASE + "/")
         resp.raise_for_status()
         json = resp.json()
         if 'nodes' in json['node']:
