@@ -10,8 +10,7 @@ class EtcdStore(ConfigSource):
         """Loads configuration from a `etcd store
         <https://github.com/coreos/etcd>`_.
 
-        Parameters have the same meaning and default values as
-        :py:class:`etcd.Client`.
+        :param baseurl: The main endpoint of the etcd store
 
         ``etcd`` has no concept of typed values, so all data from this
         source are returned as strings.

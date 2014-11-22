@@ -13,10 +13,10 @@ $ git push --tags # makes the release show up in Github
 $ python setup.py register
 $ python setup.py sdist
 $ python setup.py bdist_wheel --universal
-$ twine upload dist/ferenda-0.1.0.tar.gz dist/ferenda-0.1.0-py2.py3-none-any.whl
+$ twine upload dist/layeredconfig-0.1.0.tar.gz dist/layeredconfig-0.1.0-py2.py3-none-any.whl
 # start the next cycle
 $ git checkout master
 $ git merge release/0.1.0
-# update ferenda/__init__.py to eg version=0.1.1.dev1 and ideally also appveyor.yml
-$ git commit -m "start of next iteration" ferenda/__init__.py
+# update layeredconfig/__init__.py to eg version=0.1.1.dev1 and ideally also appveyor.yml
+$ git commit -m "start of next iteration" layeredconfig/__init__.py
 $ git push
