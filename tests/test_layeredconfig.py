@@ -16,6 +16,7 @@ import codecs
 from six import text_type as str
 from datetime import date, datetime
 import argparse
+import json
 try:
     from collections import OrderedDict
 except ImportError:  # pragma: no cover
@@ -30,7 +31,7 @@ import requests
 # The system under test
 from layeredconfig import (LayeredConfig, Defaults, INIFile, JSONFile,
                            YAMLFile, PListFile, PyFile, Environment,
-                           Commandline, EtcdSource)
+                           Commandline, EtcdStore)
 
 
 class TestLayeredConfigHelper(object):
@@ -874,8 +875,8 @@ ETCD_BASE = "http://127.0.0.1:4001/v2/keys"
 
 @unittest.skipIf("APPVEYOR" in os.environ,
                  "Not running etcd dependent tests on Appveyor")
-class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
-
+class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
+    maxDiff = None
     def strlower(value):
         return str(value).lower()
 
@@ -899,7 +900,7 @@ class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
         requests.put(ETCD_BASE + "/extra", data={'value': "foo, bar"})
         requests.put(ETCD_BASE + "/expires", data={'value': "2014-10-15"})
         requests.put(ETCD_BASE + "/lastrun", data={'value': "2014-10-15 14:32:07"})
-        return EtcdSource() 
+        return EtcdStore() 
 
     @property
     def complex(self):
@@ -913,7 +914,7 @@ class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
         requests.put(ETCD_BASE + "/mymodule/expires", data={'value': "2014-10-15"})
         requests.put(ETCD_BASE + "/mymodule/arbitrary/nesting/depth", data={'value': "works"})
         requests.put(ETCD_BASE + "/extramodule/unique", data={'value': "True"})
-        return EtcdSource()
+        return EtcdStore()
 
     def test_typed(self):
         for key in self.simple.keys():
@@ -931,22 +932,28 @@ class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
         self.assertEqual(conf.get("expires"), "2014-10-15")
         self.assertEqual(conf.get("lastrun"), "2014-10-15 14:32:07")
 
-    @unittest.expectedFailure
     def test_write(self):
         def indexfilter(node):
-            for key in node:
-                if key == "nodes":
-                    node[key] = indexfilter(node[key])
-                elif key.endswith("Index"):
-                    del node[key]
-            return node
+            # remove keys like createdIdex / modifiedIndex whose
+            # values always changes
+            if isinstance(node, dict):
+                for key in list(node.keys()):
+                    if key == "nodes":
+                        indexfilter(node[key])
+                    elif key.endswith("Index"):
+                        del node[key]
+            else:
+                node.sort() 
+                for subnode in node:
+                    indexfilter(subnode)
 
         cfg = LayeredConfig(self.complex)
         cfg.mymodule.expires = date(2014, 10, 24)
         LayeredConfig.write(cfg.mymodule)
         want = """
 {
-    "action": "get",
+    "dir": true,
+    "key": "/",
     "nodes": [
         {
             "createdIndex": 4627,
@@ -994,7 +1001,7 @@ class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
                     "createdIndex": 4633,
                     "key": "/mymodule/expires",
                     "modifiedIndex": 4633,
-                    "value": "2014-10-15"
+                    "value": "2014-10-24"
                 },
                 {
                     "createdIndex": 4634,
@@ -1036,8 +1043,10 @@ class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
         }
     ]
 }"""
-        want = indexfilter(json.loads(want))
-        got = indexfilter(requests.get("http://localhost:4001/v2/keys/?recursive=true").json()['node'])
+        want = json.loads(want)
+        indexfilter(want)
+        got = requests.get("http://localhost:4001/v2/keys/?recursive=true").json()['node']
+        indexfilter(got)
         self.assertEqual(want, got)
 
 

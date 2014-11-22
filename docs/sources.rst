@@ -59,7 +59,7 @@ Python files
 ``etcd`` stores
 ---------------
 
-.. autoclass:: layeredconfig.EtcdSource
+.. autoclass:: layeredconfig.EtcdStore
   :members:
   :member-order: bysource
 

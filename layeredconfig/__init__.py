@@ -2,7 +2,7 @@
 
 __author__ = 'Staffan Malmgren'
 __email__ = 'staffan.malmgren@gmail.com'
-__version__ = "0.1.1.dev1"
+__version__ = "0.2.0.dev1"
 
 from .layeredconfig import LayeredConfig
 from .configsource import ConfigSource
@@ -15,4 +15,4 @@ from .environment import Environment
 from .plistfile import PListFile
 from .yamlfile import YAMLFile
 from .pyfile import PyFile
-from .etcdsource import EtcdSource
+from .etcdstore import EtcdStore
