@@ -3,7 +3,7 @@
 History
 =======
 
-0.2.0 (2014-11-??)
+0.2.0 (2014-11-22)
 ------------------
 
 * Integration with argparse: The Commandline source now accepts an
