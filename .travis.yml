@@ -22,7 +22,7 @@ install:
 
 # command to run tests, e.g. python setup.py test
 script:
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then coverage run --include "layeredconfig/*py" -m unittest2 discover tests; fi
-  - if [[ $TRAVIS_PYTHON_VERSION != '2.6' ]]; then coverage run --include "layeredconfig/*py" -m unittest discover tests; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then PYTHONWARNINGS=i coverage run --include "layeredconfig/*py" -m unittest2 discover tests; fi
+  - if [[ $TRAVIS_PYTHON_VERSION != '2.6' ]]; then PYTHONWARNINGS=i coverage run --include "layeredconfig/*py" -m unittest discover tests; fi
 after_success:
   - coveralls

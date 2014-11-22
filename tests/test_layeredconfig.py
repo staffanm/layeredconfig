@@ -17,6 +17,7 @@ from six import text_type as str
 from datetime import date, datetime
 import argparse
 import json
+from operator import itemgetter
 try:
     from collections import OrderedDict
 except ImportError:  # pragma: no cover
@@ -943,7 +944,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
                     elif key.endswith("Index"):
                         del node[key]
             else:
-                node.sort() 
+                node[:] = sorted(node, key=itemgetter('key'))
                 for subnode in node:
                     indexfilter(subnode)
 
