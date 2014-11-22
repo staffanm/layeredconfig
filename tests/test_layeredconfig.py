@@ -883,9 +883,12 @@ class TestEtcdSource(unittest.TestCase, TestConfigSourceHelper):
     transforms = {bool: strlower}
 
     def _clear_server(self):
-        json = requests.get(ETCD_BASE + "/").json()
-        for node in json['node']['nodes']:
-            resp = requests.delete(ETCD_BASE + "%s?recursive=true" % node['key'])
+        resp = requests.get(ETCD_BASE + "/").json()
+        resp.raise_for_status()
+        json = resp.json()
+        if 'nodes' in json['node']:
+            for node in json['node']['nodes']:
+                resp = requests.delete(ETCD_BASE + "%s?recursive=true" % node['key'])
 
     @property
     def simple(self):
