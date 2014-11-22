@@ -3,11 +3,11 @@
 language: python
 
 python:
-#  - "3.4"
-#  - "3.3"
-#  - "3.2"
+  - "3.4"
+  - "3.3"
+  - "3.2"
   - "2.7"
-#  - "2.6"
+  - "2.6"
 
 before_install:
   - curl -L  https://github.com/coreos/etcd/releases/download/v0.4.6/etcd-v0.4.6-linux-amd64.tar.gz -o etcd-v0.4.6-linux-amd64.tar.gz
