@@ -791,6 +791,10 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
         self.supported_types = (str, list)
         super(TestCommandline, self).test_config_subsections()
 
+    def test_set(self):
+        self.simple.set("home", "away from home")
+        self.assertEqual(self.simple.get("home"), "away from home")
+
 
 class TestCommandlineConfigured(TestCommandline):
 

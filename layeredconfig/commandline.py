@@ -209,7 +209,7 @@ class Commandline(ConfigSource):
                            sectionkey=key)
 
     def set(self, key, value):
-        raise NotImplementedError
+        setattr(self.source, key, value)
 
     def typed(self, key):
         if self._provided_parser:
