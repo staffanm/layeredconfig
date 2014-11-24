@@ -55,18 +55,18 @@ class Commandline(ConfigSource):
                 self.commandline = sys.argv[1:]
         else:
             self.commandline = commandline
+        self.autoargs = kwargs.get('autoargs', {})
         if parser is None:
             if kwargs.get('parent'):
-                # we're a subsection object, we don't need a parser
+                # we're a subsection object, we don't need a parser. 
                 self.parser = None
             else:
                 # create a "bootstrapping" argument parser
                 self.parser = argparse.ArgumentParser()
-                added = set()
                 for arg in self.commandline:
                     if arg.startswith("--"):
                         argname = arg.split("=")[0][2:]
-                        if argname not in added:
+                        if argname not in self.autoargs:
                             # at this point we don't know anything about
                             # this argument other than that it exists and
                             # our bootstrapping argument parser should
@@ -81,7 +81,7 @@ class Commandline(ConfigSource):
                                                      action='append',
                                                      nargs='?',
                                                      const=True)
-                        added.add(argname)
+                            self.autoargs[argname] = True
             self._provided_parser = False
         else:
             self.parser = parser
@@ -96,6 +96,21 @@ class Commandline(ConfigSource):
                 self.source = kwargs['source']
             else:
                 self.source, self.rest = self.parser.parse_known_args(self.commandline)
+        if self._provided_parser and self.rest:
+            # reconfigure our provided parser and try to add arguments
+            # for every unprocessed long option.
+            for arg in self.rest:
+                if arg.startswith("--"):
+                    argname = arg.split("=")[0][2:]
+                    if (argname not in self.autoargs and
+                        argname not in self.source):
+                        self.parser.add_argument("--%s" % argname,
+                                                 action='append',
+                                                 nargs='?',
+                                                 const=True)
+                        self.autoargs[argname] = True
+            # now redo the parsing
+            self.source, self.rest = self.parser.parse_known_args(self.commandline)
 
     def setup(self, config):
         if not self.parser:
@@ -112,9 +127,14 @@ class Commandline(ConfigSource):
                     kwargs = {'type': currenttype}
                 else:
                     kwargs = {}
-                self.parser.add_argument('--%s' % key,
-                                         help="Help for %s goes here" % key,
-                                         **kwargs)
+
+                if key not in self.source:
+                    self.parser.add_argument('--%s' % key,
+                                             action='append',
+                                             nargs='?',
+                                             const=True,
+                                             **kwargs)
+                    self.autoargs[key] = True
             except argparse.ArgumentError:
                 # the parser already had this argument -- assume it's
                 # fully configured with typing, help, and
@@ -146,9 +166,10 @@ class Commandline(ConfigSource):
         if self.sectionkey:
             key = self.sectionkey + "_" + key
         r = getattr(self.source, key)
-        # undo the automatic list behaviour by the bootstrap parser
-        # (which has store='append' for all discovered arguments)
-        if not self._provided_parser and isinstance(r, list) and len(r) == 1:
+        # undo the automatic list behaviour for autodiscovered
+        # arguments (which has store='append')
+        if (key.replace("_", "-") in self.autoargs and
+            isinstance(r, list) and len(r) == 1):
             return r[0]
         else:
             return r
@@ -184,6 +205,7 @@ class Commandline(ConfigSource):
                            source=self.source,
                            parser=self.parser,
                            provided_parser=self._provided_parser,
+                           autoargs=self.autoargs,
                            sectionkey=key)
 
     def set(self, key, value):
@@ -191,10 +213,10 @@ class Commandline(ConfigSource):
 
     def typed(self, key):
         if self._provided_parser:
-            # a provided parser (not a bootstrapped parser) should be able
-            # to convert input to typed data -- but only those things that
-            # it actually has
-            return self.has(key)
+            # a provided parser (not a bootstrapped parser) should be
+            # able to convert input to typed data -- but only for
+            # those arguments that were configured
+            return self.has(key) and key not in self.autoargs
         else:
             # a boostrapped parser will support typing for bool
             # (valueless args) and lists (multiple args)

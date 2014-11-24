@@ -1127,6 +1127,33 @@ class TestTyping(unittest.TestCase, TestLayeredConfigHelper):
         with self.assertRaises(AttributeError):
             self.assertEqual(subconfig.lastdownload, None)
 
+    def test_commandline_implicit_typing(self):
+        # The big test here is really the partially-configured
+        # ArgumentParser (handles one positional argument but not the
+        # optional --force)
+        defaults = {'force': False}
+        cmdline = ['command', '--force']
+        parser = argparse.ArgumentParser()
+        parser.add_argument("positional")
+        cmdlinesrc = Commandline(cmdline, parser=parser)
+        cfg = LayeredConfig(Defaults(defaults), cmdlinesrc)
+        self.assertEqual(cfg.force, True)
+
+        # try again with explicit argument
+        parser = argparse.ArgumentParser()
+        parser.add_argument("positional")
+        cmdlinesrc = Commandline(['command', '--force=True'], parser=parser)
+        cfg = LayeredConfig(Defaults(defaults), cmdlinesrc)
+        self.assertEqual(cfg.force, True)
+
+        # once again without the optional typing source
+        parser = argparse.ArgumentParser()
+        parser.add_argument("positional")
+        cmdlinesrc = Commandline(['command', '--force'], parser=parser)
+        cfg = LayeredConfig(Defaults({}), cmdlinesrc)
+        self.assertEqual(cfg.force, True)
+
+
 
 class TestTypingINIFile(TestINIFileHelper,
                         TestLayeredConfigHelper,
