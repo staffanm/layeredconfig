@@ -3,14 +3,12 @@
 History
 =======
 
-0.2.1
-------
+0.2.1 (2014-11-26)
+------------------
 
-* Fixed a bug where Commandline and implicit+typed argumens where
-  either a fully configured argparse object was required, or none at
-  all. Now some of the arguments can be configured using
-  ArgumentParser.add_argument, and the rest of all possible arguments
-  are sanely initialized.
+* Made the Commandline source interact better with "partially
+  configured" ArgumentParser objects (parsers that has been configured
+  with some, but not all, possible arguments).
 
 0.2.0 (2014-11-22)
 ------------------
