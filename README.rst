@@ -41,6 +41,10 @@ backends, and makes it available to your code in a simple way::
   configuration information, including which source takes
   precedence. Implementations of many common sources are included and
   there is a API for writing new ones.
+* Included configuration sources for INI files, YAML files, JSON file,
+  PList files, etcd stores (read-write), Python source files,
+  hard-coded defaults, command line options, environment variables
+  (read-only).
 * Configuration can include subsections
   (ie. ``config.downloading.refresh``) and if a
   subsection does not contain a requested setting, it can optionally
