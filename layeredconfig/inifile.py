@@ -106,7 +106,7 @@ class INIFile(ConfigSource):
         return str(self.source.get(self.sectionkey, key))
 
     def set(self, key, value):
-        self.source.set(self.sectionkey, key, str(value))
+        self.source.set(self.sectionkey, key, self._strvalue(value))
 
     def keys(self):
         for k in self.source.options(self.sectionkey):

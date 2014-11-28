@@ -56,10 +56,11 @@ class TestLayeredConfigHelper(object):
         bool_transform = self.transforms.get(bool, bool_type)
         self.assertIs(type(cfg.force), bool_type)
         self.assertEqual(cfg.force, bool_transform(True))
-
+        
         if list in self.supported_types:
             list_type = list
             list_want = ['foo', 'bar']
+            self.assertIs(type(cfg.extra[0]), str)
         else:
             list_type = str
             list_want = "foo, bar"  # recommended list serialization
@@ -345,6 +346,7 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase,
     def test_write(self):
         cfg = LayeredConfig(INIFile("complex.ini"))
         cfg.mymodule.expires = date(2014, 10, 24)
+        cfg.mymodule.extra = ['foo', 'baz', 'quux']
         # calling write for any submodule will force a write of the
         # entire config file
         LayeredConfig.write(cfg.mymodule)
@@ -356,7 +358,7 @@ extra = foo, bar
 
 [mymodule]
 force = False
-extra = foo, baz
+extra = foo, baz, quux
 expires = 2014-10-24
 
 [extramodule]
@@ -428,6 +430,7 @@ class TestJSONFile(unittest.TestCase, TestConfigSourceHelper):
         self.maxDiff = None
         cfg = LayeredConfig(self.complex)
         cfg.mymodule.expires = date(2014, 10, 24)
+        cfg.mymodule.extra.append("quux")
         # calling write for any submodule will force a write of the
         # entire config file
         LayeredConfig.write(cfg.mymodule)
@@ -450,7 +453,8 @@ class TestJSONFile(unittest.TestCase, TestConfigSourceHelper):
         "expires": "2014-10-24",
         "extra": [
             "foo",
-            "baz"
+            "baz",
+            "quux"
         ],
         "force": false
     },
@@ -513,6 +517,7 @@ extramodule:
     def test_write(self):
         cfg = LayeredConfig(self.complex)
         cfg.mymodule.expires = date(2014, 10, 24)
+        cfg.mymodule.extra.append('quux')
         # calling write for any submodule will force a write of the
         # entire config file
         LayeredConfig.write(cfg.mymodule)
@@ -535,6 +540,7 @@ mymodule:
   extra:
   - foo
   - baz
+  - quux
   force: false
 processes: 4
 """.lstrip()
@@ -635,6 +641,7 @@ class TestPListFile(unittest.TestCase, TestConfigSourceHelper):
         self.maxDiff = None
         cfg = LayeredConfig(self.complex)
         cfg.mymodule.expires = date(2014, 10, 24)
+        cfg.mymodule.extra.append('quux')
         # calling write for any submodule will force a write of the
         # entire config file
         LayeredConfig.write(cfg.mymodule)
@@ -673,6 +680,7 @@ class TestPListFile(unittest.TestCase, TestConfigSourceHelper):
 		<array>
 			<string>foo</string>
 			<string>baz</string>
+			<string>quux</string>
 		</array>
 		<key>force</key>
 		<false/>
@@ -855,7 +863,7 @@ class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
                            'MYAPP_FORCE': 'True',
                            'MYAPP_EXTRA': 'foo, bar',
                            'MYAPP_MYMODULE_FORCE': 'False',
-                           'MYAPP_MYMODULE_EXTRA': 'foo, baz',
+                           'MYAPP_MYMODULE_EXTRA': "foo, baz",
                            'MYAPP_MYMODULE_EXPIRES': '2014-10-15',
                            'MYAPP_MYMODULE_ARBITRARY_NESTING_DEPTH': 'works',
                            'MYAPP_EXTRAMODULE_UNIQUE': 'True'},
@@ -953,8 +961,12 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
                     indexfilter(subnode)
 
         cfg = LayeredConfig(self.complex)
+        cfg.extra = ['foo', 'value with space']
         cfg.mymodule.expires = date(2014, 10, 24)
-        LayeredConfig.write(cfg.mymodule)
+        cfg.mymodule.extra = ['foo', 'baz', 'quux']
+        # note that this will write the entire config incl cfg.extra,
+        # not just the values in the 'mymodule' subsection.
+        LayeredConfig.write(cfg.mymodule) 
         want = """
 {
     "dir": true,
@@ -982,7 +994,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
             "createdIndex": 4630,
             "key": "/extra",
             "modifiedIndex": 4630,
-            "value": "foo, bar"
+            "value": "['foo', 'value with space']"
         },
         {
             "createdIndex": 4631,
@@ -1000,7 +1012,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
                     "createdIndex": 4632,
                     "key": "/mymodule/extra",
                     "modifiedIndex": 4632,
-                    "value": "foo, baz"
+                    "value": "foo, baz, quux"
                 },
                 {
                     "createdIndex": 4633,
@@ -1055,7 +1067,6 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
         self.assertEqual(want, got)
 
 
-        
 class TestTyping(unittest.TestCase, TestLayeredConfigHelper):
     types = {'home': str,
              'processes': int,
@@ -1156,7 +1167,6 @@ class TestTyping(unittest.TestCase, TestLayeredConfigHelper):
         cmdlinesrc = Commandline(['command', '--force'], parser=parser)
         cfg = LayeredConfig(Defaults({}), cmdlinesrc)
         self.assertEqual(cfg.force, True)
-
 
 
 class TestTypingINIFile(TestINIFileHelper,

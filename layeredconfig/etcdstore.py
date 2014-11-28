@@ -76,7 +76,7 @@ class EtcdStore(ConfigSource):
     def save(self):
         for k in self.dirtyvalues:
             requests.put(self.source+self.sectionkey+k,
-                         data={'value': str(self.dirtyvalues[k])})
+                         data={'value': self._strvalue(self.dirtyvalues[k])})
         self.dirtyvalues = {}
         for subsection in self.subsections():
             self.subsection(subsection).save()

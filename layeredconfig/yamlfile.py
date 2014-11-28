@@ -26,7 +26,7 @@ class YAMLFile(DictSource):
         if 'defaults' in kwargs:
             self.source = kwargs['defaults']
         else:
-            with codecs.open(yamlfilename) as fp:
+            with codecs.open(yamlfilename, encoding="utf-8") as fp:
                 # do we need safe_load?
                 self.source = yaml.safe_load(fp.read())
             self.yamlfilename = yamlfilename
@@ -36,12 +36,20 @@ class YAMLFile(DictSource):
 
     def get(self, key):
         ret = super(YAMLFile, self).get(key)
+        # pyyaml by default makes strings whose content fit in ascii
+        # available (on python2) as str objects, not unicode. Undo
+        # this sillyness.
         if isinstance(ret, bytes):
             ret = ret.decode(self.encoding)
+        # same with individual elements of lists
+        elif isinstance(ret, list):
+            for idx, val in enumerate(ret):
+                if isinstance(ret[idx], bytes):
+                    ret[idx] = ret[idx].decode(self.encoding)
         return ret
 
     def save(self):
         assert not self.parent, "save() should only be called on root objects"
         if self.yamlfilename:
-            with open(self.yamlfilename, "w") as fp:
-                yaml.dump(self.source, fp, default_flow_style=False)
+            with codecs.open(self.yamlfilename, "w", encoding=self.encoding) as fp:
+                yaml.safe_dump(self.source, fp, default_flow_style=False)

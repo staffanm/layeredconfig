@@ -51,6 +51,11 @@ class PListFile(DictSource):
         ret = super(PListFile, self).get(key)
         if isinstance(ret, bytes):
             ret = ret.decode(self.encoding)
+        # same with individual elements of lists
+        elif isinstance(ret, list):
+            for idx, val in enumerate(ret):
+                if isinstance(ret[idx], bytes):
+                    ret[idx] = ret[idx].decode(self.encoding)
         return ret
 
     def save(self):

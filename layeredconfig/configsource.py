@@ -215,4 +215,18 @@ class ConfigSource(object):
         # print("Converting %r to %r" % (value,t(value)))
         return t(value)
 
-
+    # Internal function for now, until we find a generalized
+    # extensible way of handling type conversions
+    def _strvalue(self, value):
+        if isinstance(value, list): # really any iterable but not
+            # strings...  if any of the elements contain " " or ", "
+            # use literal syntax, otherwise use simple syntax
+            if [x for x in value if " " in x or "," in x]:
+                # can't use repr or str because unicode strings on py2
+                # will result in a literal like "[u'foo', u'bar']", we
+                # want "[u'foo', u'bar']"
+                return "[%s]" % ", ".join(["'"+x.replace("'", "\'")+"'" for x in value])
+            else:
+                return ", ".join(value)
+        else:
+            return str(value)
