@@ -5,4 +5,4 @@ ordereddict
 wheel
 six
 twine
-
+future

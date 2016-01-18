@@ -48,7 +48,7 @@ class INIFile(ConfigSource):
         super(INIFile, self).__init__(**kwargs)
         if inifilename:
             if not os.path.exists(inifilename):
-                logging.warn("INI file %s does not exist" % inifilename)
+                logging.warning("INI file %s does not exist" % inifilename)
                 # create a empty RawConfigParser (Raw to avoid the
                 # interpolation behaviour of other classes)
                 self.source = configparser.RawConfigParser(dict_type=OrderedDict)

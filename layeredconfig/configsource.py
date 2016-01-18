@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from datetime import date, datetime
 import ast
+import inspect
 
 from . import LayeredConfig
 
@@ -197,7 +198,8 @@ class ConfigSource(object):
 
         # self.get(key) should never fail
         default = self.get(key)
-        if type(default) == type:
+        # if type(default) == type:
+        if inspect.isclass(default):
             # print("Using class for %s" % key)
             t = default
         else:
