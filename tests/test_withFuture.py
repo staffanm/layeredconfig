@@ -7,6 +7,7 @@ from future import standard_library
 standard_library.install_aliases()
 
 import os
+import sys
 
 if sys.version_info < (2, 7, 0):  # pragma: no cover
     import unittest2 as unittest
