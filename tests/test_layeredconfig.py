@@ -1244,6 +1244,24 @@ class TestLayered(TestINIFileHelper, unittest.TestCase):
         self.assertEqual(['force', 'home', 'loglevel'], list(cfg.mymodule))
 
 
+    def test_layered_yaml(self):
+        # see https://github.com/staffanm/layeredconfig/issues/2
+        with open("1.yaml", "w") as fp:
+            fp.write("""a:
+  b: b
+""")
+        with open("2.yaml", "w") as fp:
+            fp.write("somevar: value")
+
+        try:
+            yamls = [YAMLFile('1.yaml'), YAMLFile('2.yaml')]
+            cfg = LayeredConfig(*yamls)
+            self.assertEqual(cfg.somevar, 'value')
+            self.assertEqual(cfg.a.b, 'b')
+        finally:
+            os.unlink("1.yaml")
+            os.unlink("2.yaml")
+
 
 class TestSubsections(unittest.TestCase):
     def test_list(self):

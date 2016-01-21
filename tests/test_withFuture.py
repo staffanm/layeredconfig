@@ -14,7 +14,7 @@ if sys.version_info < (2, 7, 0):  # pragma: no cover
 else: 
     import unittest
 
-from layeredconfig import LayeredConfig, Defaults, Environment
+from layeredconfig import LayeredConfig, Defaults, Environment, INIFile
 
 
 class TestFuture(unittest.TestCase):
