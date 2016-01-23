@@ -23,6 +23,8 @@ class YAMLFile(DictSource):
 
 
         super(YAMLFile, self).__init__(**kwargs)
+        if yamlfilename == None and 'parent' in kwargs and hasattr(kwargs['parent'], 'yamlfilename'):
+            yamlfilename = kwargs['parent'].yamlfilename
         if 'defaults' in kwargs:
             self.source = kwargs['defaults']
         else:
