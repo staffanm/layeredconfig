@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-
-from builtins import *
-from future import standard_library
-standard_library.install_aliases()
+try:
+    from builtins import *
+    from future import standard_library
+    standard_library.install_aliases()
+except:
+    # we might be on py3.2, which the future library doesn't support
+    pass 
 
 import os
 import sys
@@ -16,7 +19,8 @@ else:
 
 from layeredconfig import LayeredConfig, Defaults, Environment, INIFile
 
-
+@unittest.skipIf (sys.version_info[0] == 3 and sys.version_info[1] < 3,
+                  "Python 3.2 and lower doesn't support the future module")
 class TestFuture(unittest.TestCase):
 
     def test_newint(self):
