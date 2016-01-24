@@ -24,6 +24,8 @@ class JSONFile(DictSource):
 
         """
         super(JSONFile, self).__init__(**kwargs)
+        if jsonfilename == None and 'parent' in kwargs and hasattr(kwargs['parent'], 'jsonfilename'):
+            jsonfilename = kwargs['parent'].jsonfilename
         if 'defaults' in kwargs:
             self.source = kwargs['defaults']
         else:
@@ -36,7 +38,8 @@ class JSONFile(DictSource):
     def typed(self, key):
         # if the value is anything other than a string, we can be sure
         # that it contains useful type information.
-        return not isinstance(self.get(key), str)
+        
+        return self.has(key) and not isinstance(self.get(key), str)
 
     def set(self, key, value):
         # simple stringification -- should perhaps only be done in the

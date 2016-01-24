@@ -52,7 +52,8 @@ class TestLayeredConfigHelper(object):
 
         bool_type = bool if bool in self.supported_types else str
         # ugly hack to work around the case that etcd will transform a
-        # (string) value of "True" to "true"
+        # (string) value of "True" to "true". FIXME: This doesn't seem
+        # to be true as of later Etcd versions?
         bool_transform = self.transforms.get(bool, bool_type)
         self.assertIs(type(cfg.force), bool_type)
         self.assertEqual(cfg.force, bool_transform(True))
@@ -130,7 +131,9 @@ class TestLayeredConfigHelper(object):
 
     def _test_layered_configs(self, cfg):
         self.assertEqual(cfg.home, 'otherdata')
-        self.assertEqual(cfg.mymodule.force, False)
+
+        bool_type = bool if bool in self.supported_types else str
+        self.assertEqual(cfg.mymodule.force, bool_type(False))
 
 
 class TestConfigSourceHelper(TestLayeredConfigHelper):

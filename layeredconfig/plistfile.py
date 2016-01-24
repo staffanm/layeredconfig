@@ -31,6 +31,8 @@ class PListFile(DictSource):
             self.reader = plistlib.readPlist
             self.writer = plistlib.writePlist
         super(PListFile, self).__init__(**kwargs)
+        if plistfilename == None and 'parent' in kwargs and hasattr(kwargs['parent'], 'plistfilename'):
+            plistfilename = kwargs['parent'].plistfilename
         if 'defaults' in kwargs:
             self.source = kwargs['defaults']
         else:

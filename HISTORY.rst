@@ -3,6 +3,18 @@
 History
 =======
 
+0.2.2 (2016-01-??)
+------------------
+
+* Fixed a bug when using a class in a Default configuration for
+  automatic coercion, where the type of the class isn't type (as is
+  the case with the "newint" and other classes from the future
+  module).
+
+* Fixed a bug where loading configuration from multiple config files
+  would crash if latter configs lacked subsections present in
+  earlier. Thanks to @badkapitan!
+
 0.2.1 (2014-11-26)
 ------------------
 

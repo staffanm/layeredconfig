@@ -5,7 +5,7 @@ import inspect
 
 class PyFile(ConfigSource):
 
-    def __init__(self, pyfilename, **kwargs):
+    def __init__(self, pyfilename=None, **kwargs):
         """Loads configuration from a python source file. Any variables
         defined in that file will be interpreted as configuration
         keys. The class ``Subsection`` is automatically imported into
