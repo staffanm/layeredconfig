@@ -128,6 +128,10 @@ class TestLayeredConfigHelper(object):
             date_want = "2014-10-15" # recommended date serialization
         self.assertEqual(cfg.mymodule.expires, date_want)
 
+    def _test_layered_configs(self, cfg):
+        self.assertEqual(cfg.home, 'otherdata')
+        self.assertEqual(cfg.mymodule.force, False)
+
 
 class TestConfigSourceHelper(TestLayeredConfigHelper):
 
@@ -189,6 +193,15 @@ class TestConfigSourceHelper(TestLayeredConfigHelper):
         cfg = LayeredConfig(self.complex)
         self._test_config_subsections(cfg)
 
+    def test_layered_subsections(self):
+        # this testcases excercies a bug (or rather a deficency in the
+        # file-based sources) -- if the highest-priority source has
+        # subsections, and a lower-priority file-based source lacks
+        # those subsections, bad things would happen.
+        # 
+        # see https://github.com/staffanm/layeredconfig/issues/2
+        cfg = LayeredConfig(self.complex, self.extra)
+        self._test_layered_configs(cfg)
 
 # common helper
 class TestINIFileHelper(object):
@@ -223,6 +236,13 @@ expires = 2014-10-15
 unique = True
 """)
 
+        with open("extra.ini", "w") as fp:
+            fp.write("""
+[__root__]
+home = otherdata
+""")
+
+
     def tearDown(self):
         super(TestINIFileHelper, self).tearDown()
         os.unlink("simple.ini")
@@ -253,6 +273,7 @@ class TestDefaults(unittest.TestCase, TestConfigSourceHelper):
                                  },
                         'extramodule': {'unique': True}})
 
+    extra = Defaults({'home': 'otherdata'})
 
 class TestINIFile(TestINIFileHelper, unittest.TestCase,
                   TestConfigSourceHelper):
@@ -264,6 +285,7 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase,
         super(TestINIFile, self).setUp()
         self.simple = INIFile("simple.ini")
         self.complex = INIFile("complex.ini")
+        self.extra = INIFile("extra.ini")
 
     # Overrides of TestHelper.test_get, .test_typed and
     # .test_subsection_nested due to limitations of INIFile
@@ -403,12 +425,17 @@ class TestJSONFile(unittest.TestCase, TestConfigSourceHelper):
  "extramodule": {"unique": true}
 }
 """)
+        with open("extra.json", "w") as fp:
+            fp.write('{"home": "otherdata"}')
+
         self.simple = JSONFile("simple.json")
         self.complex = JSONFile("complex.json")
+        self.extra = JSONFile("extra.json")
 
     def tearDown(self):
         os.unlink("simple.json")
         os.unlink("complex.json")
+        os.unlink("extra.json")
 
     def test_get(self):
         self.assertEqual(self.simple.get("home"), "mydata")
@@ -498,12 +525,19 @@ mymodule:
 extramodule:
     unique: true
 """)
+        with open("extra.yaml", "w") as fp:
+            fp.write("""
+home: otherdata
+""")
+
         self.simple = YAMLFile("simple.yaml")
         self.complex = YAMLFile("complex.yaml")
+        self.extra = YAMLFile("extra.yaml")
 
     def tearDown(self):
         os.unlink("simple.yaml")
         os.unlink("complex.yaml")
+        os.unlink("extra.yaml")
 
     # Also, strings are unicode when they need to be,
     # str otherwise.
@@ -620,12 +654,24 @@ class TestPListFile(unittest.TestCase, TestConfigSourceHelper):
 </dict>
 </plist>
 """)
+        with open("extra.plist", "w") as fp:
+            fp.write("""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>home</key>
+        <string>otherdata</string>
+</dict>
+</plist>
+""")            
         self.simple = PListFile("simple.plist")
         self.complex = PListFile("complex.plist")
+        self.extra = PListFile("extra.plist")
 
     def tearDown(self):
         os.unlink("simple.plist")
         os.unlink("complex.plist")
+        os.unlink("extra.plist")
 
     # override only because plists cannot handle date objects (only datetime)
     def test_get(self):
@@ -732,12 +778,20 @@ mymodule.arbitrary.nesting.depth = 'works'
 extramodule = Subsection()
 extramodule.unique = True
 """)
+
+        with open("extra.py", "w") as fp:
+            fp.write("""from __future__ import unicode_literals
+
+home = 'otherdata'
+""")
         self.simple = PyFile("simple.py")
         self.complex = PyFile("complex.py")
+        self.extra = PyFile("extra.py")
 
     def tearDown(self):
         os.unlink("simple.py")
         os.unlink("complex.py")
+        os.unlink("extra.py")
 
 
 class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
@@ -799,6 +853,10 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
         self.supported_types = (str, list)
         super(TestCommandline, self).test_config_subsections()
 
+    def test_layered_subsections(self):
+        pass  # this test has no meaning for Command line arguments
+              # (can't have two sets of them)
+
     def test_set(self):
         self.simple.set("home", "away from home")
         self.assertEqual(self.simple.get("home"), "away from home")
@@ -842,6 +900,10 @@ class TestCommandlineConfigured(TestCommandline):
         # re-enable the original impl of test_config_subsections
         TestConfigSourceHelper.test_config_subsections(self)
 
+    def test_layered_subsections(self):
+        pass  # this test has no meaning for Command line arguments
+              # (can't have two sets of them)
+
     def test_typed(self):
         # re-enable the original impl of test_get
         TestConfigSourceHelper.test_typed(self)
@@ -877,6 +939,10 @@ class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
         self.assertEqual(self.simple.get("expires"), "2014-10-15")
         self.assertEqual(self.simple.get("lastrun"), "2014-10-15 14:32:07")
 
+    def test_layered_subsections(self):
+        pass  # this test has no meaning for environment variables
+              # (can't have two sets of them)
+
     def test_typed(self):
         for key in self.simple.keys():
             self.assertFalse(self.simple.typed(key))
@@ -909,7 +975,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
         self._clear_server()
         requests.put(ETCD_BASE + "/home", data={'value': 'mydata'})
         requests.put(ETCD_BASE + "/processes", data={'value': '4'})
-        requests.put(ETCD_BASE + "/force", data={'value': "True"})
+        requests.put(ETCD_BASE + "/force", data={'value': "true"})
         requests.put(ETCD_BASE + "/extra", data={'value': "foo, bar"})
         requests.put(ETCD_BASE + "/expires", data={'value': "2014-10-15"})
         requests.put(ETCD_BASE + "/lastrun", data={'value': "2014-10-15 14:32:07"})
@@ -920,14 +986,21 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
         self._clear_server()
         requests.put(ETCD_BASE + "/home", data={'value': "mydata"})
         requests.put(ETCD_BASE + "/processes", data={'value': "4"})
-        requests.put(ETCD_BASE + "/force", data={'value': "True"})
+        requests.put(ETCD_BASE + "/force", data={'value': "true"})
         requests.put(ETCD_BASE + "/extra", data={'value': "foo, bar"})
-        requests.put(ETCD_BASE + "/mymodule/force", data={'value': "False"})
+        requests.put(ETCD_BASE + "/mymodule/force", data={'value': "false"})
         requests.put(ETCD_BASE + "/mymodule/extra", data={'value': "foo, baz"})
         requests.put(ETCD_BASE + "/mymodule/expires", data={'value': "2014-10-15"})
         requests.put(ETCD_BASE + "/mymodule/arbitrary/nesting/depth", data={'value': "works"})
-        requests.put(ETCD_BASE + "/extramodule/unique", data={'value': "True"})
+        requests.put(ETCD_BASE + "/extramodule/unique", data={'value': "true"})
         return EtcdStore()
+
+    def test_layered_subsections(self):
+        pass  # this test has no meaning for etcd stores, as a single
+              # server cannot have two sets of configuration to layere
+              # (however, we could concievably have two distinct
+              # servers -- but that isn't supported on ground of being
+              # too complicated)
 
     def test_typed(self):
         for key in self.simple.keys():
@@ -970,7 +1043,6 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
         want = """
 {
     "dir": true,
-    "key": "/",
     "nodes": [
         {
             "createdIndex": 4627,
@@ -1244,25 +1316,6 @@ class TestLayered(TestINIFileHelper, unittest.TestCase):
         self.assertEqual(['force', 'home', 'loglevel'], list(cfg.mymodule))
 
 
-    def test_layered_yaml(self):
-        # see https://github.com/staffanm/layeredconfig/issues/2
-        with open("1.yaml", "w") as fp:
-            fp.write("""a:
-  b: b
-""")
-        with open("2.yaml", "w") as fp:
-            fp.write("somevar: value")
-
-        try:
-            yamls = [YAMLFile('1.yaml'), YAMLFile('2.yaml')]
-            cfg = LayeredConfig(*yamls)
-            self.assertEqual(cfg.somevar, 'value')
-            self.assertEqual(cfg.a.b, 'b')
-        finally:
-            os.unlink("1.yaml")
-            os.unlink("2.yaml")
-
-
 class TestSubsections(unittest.TestCase):
     def test_list(self):
         defaults = {'home': 'mydata',
@@ -1271,6 +1324,66 @@ class TestSubsections(unittest.TestCase):
                             cascade=True)
         self.assertEqual(set(['home', 'processes']),
                          set(cfg.subsection))
+
+
+class TestLayeredSubsections(unittest.TestCase):
+
+    def _test_subsection(self, primary, secondary, cls):
+        with open("primary.txt", "w") as fp:
+            fp.write(primary)
+        with open("secondary.txt", "w") as fp:
+            fp.write(secondary)
+        try:
+            srcs = [cls('primary.txt'), cls('secondary.txt')]
+            cfg = LayeredConfig(*srcs)
+            self.assertEqual(cfg.somevar, 'value')
+            self.assertEqual(cfg.a.b, 'b')
+        finally:
+            os.unlink("primary.txt")
+            os.unlink("secondary.txt")
+            
+    def test_layered_yaml(self):
+        self._test_subsection("""a:
+  b: b
+        """, "somevar: value", YAMLFile)
+
+    def test_layered_ini(self):
+        self._test_subsection("""
+[__root__]
+
+[a]
+
+b = b
+""", """
+[__root__]
+somevar = value
+""", INIFile)
+
+    def test_layered_json(self):
+        self._test_subsection('{"a": {"b": "b"} }',
+                              '{"somevar": "value"}',
+                              JSONFile)
+
+    def test_layered_plist(self):
+        self._test_subsection("""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>a</key>
+        <dict>
+        	<key>b</key>
+        	<string>b</string>
+        </dict>
+</dict>
+</plist>""", """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>somevar</key>
+        <string>value</string>
+</dict>
+</plist>""", PListFile)
+
 
 
 class TestModifications(TestINIFileHelper, unittest.TestCase):

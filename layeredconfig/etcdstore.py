@@ -73,6 +73,12 @@ class EtcdStore(ConfigSource):
         if key and value:
             self.dirtyvalues[key] = value
 
+    def _strvalue(self, value):
+        if isinstance(value, bool):
+            return str(value).lower()
+        else:
+            return super(EtcdStore, self)._strvalue(value)
+
     def save(self):
         for k in self.dirtyvalues:
             requests.put(self.source+self.sectionkey+k,
