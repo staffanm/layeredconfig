@@ -41,7 +41,7 @@ class LayeredConfig(object):
         :type cascade: bool
         :param writable: Whether configuration values should be mutable.
                          ``True`` by default. This does not affect
-                         :py:meth:`~Layeredconfig.set`. 
+                         :py:meth:`~Layeredconfig.set`.
         :type writable: bool
 
         """
@@ -67,7 +67,7 @@ class LayeredConfig(object):
                 # we couldn't get any subsections for source, perhaps
                 # because it's an "empty" source. Well, that's ok.
                 pass
-                
+
         for k in sectionkeys:
             # 2. find all subsections in all of our sources
             s = []
@@ -86,9 +86,9 @@ class LayeredConfig(object):
                                            empty=True,
                                            cascade=self._cascade))
             # 3. create a LayeredConfig object for the subsection
-            c = LayeredConfig(*s,
-                              cascade=self._cascade,
-                              writable=self._writable)
+            c = self.__class__(*s,
+                               cascade=self._cascade,
+                               writable=self._writable)
             c._sectionkey = k
             c._parent = self
             self._subsections[k] = c
@@ -104,12 +104,12 @@ class LayeredConfig(object):
         assignment. The modifications are written to the first
         writable source in this config object.
 
-        .. note:: 
+        .. note::
 
            This is a static method, ie not a method on any object
            instance. This is because all attribute access on a
            LayeredConfig object is meant to retrieve configuration
-           settings. 
+           settings.
 
         :param config: The configuration object to save
         :type  config: layeredconfig.LayeredConfig
@@ -133,7 +133,7 @@ class LayeredConfig(object):
         :param config: The configuration object to set values on
         :param key: The parameter name
         :param value: The new value
-        :param sourceid: The identifier for the underlying source that the 
+        :param sourceid: The identifier for the underlying source that the
                          value should be set on.
         """
         for source in config._sources:
@@ -153,7 +153,7 @@ class LayeredConfig(object):
             return default
 
 # These are methods i'd like to implement next
-#        
+#
 #    @staticmethod
 #    def where(config, key):
 #        """returns the identifier of a source where a given key is found, or None."""
@@ -195,7 +195,7 @@ class LayeredConfig(object):
         """Convert the string *value* to a boolean. ``"True"`` is converted to
         ``True`` and ``"False"`` is converted to ``False``.
 
-        .. note:: 
+        .. note::
 
            If value is neither "True" nor "False", it's returned unchanged.
 
@@ -251,7 +251,7 @@ class LayeredConfig(object):
             if source.typed(name):
                 return source.get(name)
             else:
-                # we need to find a typesource for this value. 
+                # we need to find a typesource for this value.
                 done = False
                 this = self
                 while not done:
@@ -273,7 +273,7 @@ class LayeredConfig(object):
         else:
             if self._cascade and self._parent:
                 return self._parent.__getattr__(name)
-        
+
         raise AttributeError("Configuration key %s doesn't exist" % name)
 
     def __setattr__(self, name, value):
