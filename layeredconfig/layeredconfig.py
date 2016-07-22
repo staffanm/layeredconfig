@@ -10,6 +10,7 @@ except ImportError:  # pragma: no cover
     # if on python 2.6
     from ordereddict import OrderedDict
 
+
 class LayeredConfig(object):
     def __init__(self, *sources, **kwargs):
         """Creates a config object from one or more sources and provides
@@ -41,7 +42,7 @@ class LayeredConfig(object):
         :type cascade: bool
         :param writable: Whether configuration values should be mutable.
                          ``True`` by default. This does not affect
-                         :py:meth:`~Layeredconfig.set`. 
+                         :py:meth:`~Layeredconfig.set`.
         :type writable: bool
 
         """
@@ -67,7 +68,7 @@ class LayeredConfig(object):
                 # we couldn't get any subsections for source, perhaps
                 # because it's an "empty" source. Well, that's ok.
                 pass
-                
+
         for k in sectionkeys:
             # 2. find all subsections in all of our sources
             s = []
@@ -104,12 +105,12 @@ class LayeredConfig(object):
         assignment. The modifications are written to the first
         writable source in this config object.
 
-        .. note:: 
+        .. note::
 
            This is a static method, ie not a method on any object
            instance. This is because all attribute access on a
            LayeredConfig object is meant to retrieve configuration
-           settings. 
+           settings.
 
         :param config: The configuration object to save
         :type  config: layeredconfig.LayeredConfig
@@ -133,13 +134,13 @@ class LayeredConfig(object):
         :param config: The configuration object to set values on
         :param key: The parameter name
         :param value: The new value
-        :param sourceid: The identifier for the underlying source that the 
+        :param sourceid: The identifier for the underlying source that the
                          value should be set on.
         """
         for source in config._sources:
             if source.identifier == sourceid:
                 source.set(key, value)
-        # What if no source is found? We silently ignore...
+                # What if no source is found? We silently ignore...
 
     @staticmethod
     def get(config, key, default=None):
@@ -152,22 +153,33 @@ class LayeredConfig(object):
         else:
             return default
 
-# These are methods i'd like to implement next
-#        
-#    @staticmethod
-#    def where(config, key):
-#        """returns the identifier of a source where a given key is found, or None."""
-#        pass
-#
-#    @staticmethod
-#    def dump(config):
-#        """Returns the contents of config as a dict."""
-#        pass
-#
-#    @staticmethod
-#    def load(config, d):
-#        """Recreates a dump()ed config object."""
-#        pass
+    @staticmethod
+    def dump(config):
+        """Returns the contents of config as a dict."""
+        def _dump(element):
+            if not isinstance(element, config.__class__):
+                return element
+
+            section = dict()
+            for key, subsection in element._subsections.items():
+                section[key] = _dump(subsection)
+            for key in element:
+                section[key] = getattr(element, key)
+            return section
+
+        return _dump(config)
+
+    # These are methods i'd like to implement next
+    #
+    #    @staticmethod
+    #    def where(config, key):
+    #        """returns the identifier of a source where a given key is found, or None."""
+    #        pass
+    #
+    #    @staticmethod
+    #    def load(config, d):
+    #        """Recreates a dump()ed config object."""
+    #        pass
 
     @staticmethod
     def datetimeconvert(value):
@@ -180,7 +192,6 @@ class LayeredConfig(object):
             return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
         except ValueError:
             return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-
 
     @staticmethod
     def dateconvert(value):
@@ -195,7 +206,7 @@ class LayeredConfig(object):
         """Convert the string *value* to a boolean. ``"True"`` is converted to
         ``True`` and ``"False"`` is converted to ``False``.
 
-        .. note:: 
+        .. note::
 
            If value is neither "True" nor "False", it's returned unchanged.
 
@@ -208,6 +219,8 @@ class LayeredConfig(object):
         else:
             return value
 
+    def __repr__(self):
+        return self.dump(self).__repr__()
 
     def __iter__(self):
         l = set()
@@ -251,7 +264,7 @@ class LayeredConfig(object):
             if source.typed(name):
                 return source.get(name)
             else:
-                # we need to find a typesource for this value. 
+                # we need to find a typesource for this value.
                 done = False
                 this = self
                 while not done:
@@ -273,7 +286,7 @@ class LayeredConfig(object):
         else:
             if self._cascade and self._parent:
                 return self._parent.__getattr__(name)
-        
+
         raise AttributeError("Configuration key %s doesn't exist" % name)
 
     def __setattr__(self, name, value):
@@ -311,4 +324,3 @@ class LayeredConfig(object):
             return self._parent.__setattr__(name, value)
         else:
             raise AttributeError("Configuration key %s doesn't exist" % name)
-

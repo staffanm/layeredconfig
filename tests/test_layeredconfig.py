@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover
 
 if sys.version_info < (2, 7, 0):  # pragma: no cover
     import unittest2 as unittest
-else: 
+else:
     import unittest
 import requests
 # The system under test
@@ -57,7 +57,7 @@ class TestLayeredConfigHelper(object):
         bool_transform = self.transforms.get(bool, bool_type)
         self.assertIs(type(cfg.force), bool_type)
         self.assertEqual(cfg.force, bool_transform(True))
-        
+
         if list in self.supported_types:
             list_type = list
             list_want = ['foo', 'bar']
@@ -170,7 +170,7 @@ class TestConfigSourceHelper(TestLayeredConfigHelper):
     def test_typed(self):
         for key in self.simple.keys():
             self.assertTrue(self.simple.typed(key))
-                
+
     def test_get(self):
         # FIXME: This test should be able to look at supported_types
         # like test_singlesection and test_subsections do, so derived
@@ -201,7 +201,7 @@ class TestConfigSourceHelper(TestLayeredConfigHelper):
         # file-based sources) -- if the highest-priority source has
         # subsections, and a lower-priority file-based source lacks
         # those subsections, bad things would happen.
-        # 
+        #
         # see https://github.com/staffanm/layeredconfig/issues/2
         cfg = LayeredConfig(self.complex, self.extra)
         self._test_layered_configs(cfg)
@@ -283,7 +283,7 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase,
 
     supported_types = (str,)
     supports_nesting = False
-    
+
     def setUp(self):
         super(TestINIFile, self).setUp()
         self.simple = INIFile("simple.ini")
@@ -318,7 +318,7 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase,
         # load a modified version of complex.ini
         with open("complex.ini") as fp:
             ini = fp.read()
-            
+
         with open("complex-otherroot.ini", "w") as fp:
             fp.write(ini.replace("[__root__]", "[DEFAULT]"))
         cfg = LayeredConfig(INIFile("complex-otherroot.ini",
@@ -398,7 +398,7 @@ unique = True
 class TestJSONFile(unittest.TestCase, TestConfigSourceHelper):
 
     supported_types = (str, int, bool, list)
-    
+
     def setUp(self):
         with open("simple.json", "w") as fp:
             fp.write("""
@@ -502,7 +502,7 @@ class TestYAMLFile(unittest.TestCase,
 home: mydata
 processes: 4
 force: true
-extra: 
+extra:
 - foo
 - bar
 expires: 2014-10-15
@@ -666,7 +666,7 @@ class TestPListFile(unittest.TestCase, TestConfigSourceHelper):
         <string>otherdata</string>
 </dict>
 </plist>
-""")            
+""")
         self.simple = PListFile("simple.plist")
         self.complex = PListFile("complex.plist")
         self.extra = PListFile("extra.plist")
@@ -868,7 +868,7 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
 class TestCommandlineConfigured(TestCommandline):
 
     supported_types = (str, int, bool, date, datetime, list)
-    
+
     def setUp(self):
         super(TestCommandlineConfigured, self).setUp()
         simp = argparse.ArgumentParser(description="This is a simple program")
@@ -915,7 +915,7 @@ class TestCommandlineConfigured(TestCommandline):
 class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
 
     supported_types = (str,)
-    
+
     simple = Environment({'MYAPP_HOME': 'mydata',
                           'MYAPP_PROCESSES': '4',
                           'MYAPP_FORCE': 'True',
@@ -982,7 +982,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
         requests.put(ETCD_BASE + "/extra", data={'value': "foo, bar"})
         requests.put(ETCD_BASE + "/expires", data={'value': "2014-10-15"})
         requests.put(ETCD_BASE + "/lastrun", data={'value': "2014-10-15 14:32:07"})
-        return EtcdStore() 
+        return EtcdStore()
 
     @property
     def complex(self):
@@ -1042,7 +1042,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
         cfg.mymodule.extra = ['foo', 'baz', 'quux']
         # note that this will write the entire config incl cfg.extra,
         # not just the values in the 'mymodule' subsection.
-        LayeredConfig.write(cfg.mymodule) 
+        LayeredConfig.write(cfg.mymodule)
         want = """
 {
     "dir": true,
@@ -1344,7 +1344,7 @@ class TestLayeredSubsections(unittest.TestCase):
         finally:
             os.unlink("primary.txt")
             os.unlink("secondary.txt")
-            
+
     def test_layered_yaml(self):
         self._test_subsection("""a:
   b: b
@@ -1464,6 +1464,32 @@ class TestAccessors(TestINIFileHelper, unittest.TestCase):
         self.assertEqual("mydata", LayeredConfig.get(cfg, "home"))
         self.assertEqual(None, LayeredConfig.get(cfg, "nonexistent"))
         self.assertEqual("NO!", LayeredConfig.get(cfg, "nonexistent", "NO!"))
+
+
+class TestDump(unittest.TestCase):
+    def test_dump(self):
+        defaults = {
+            'home': 'mydata',
+            'processes': 4,
+            'force': True,
+            'extra': ['foo', 'bar'],
+            'mymodule': {
+                'force': False,
+                'extra': ['foo', 'baz'],
+                'arbitrary': {
+                    'nesting': {
+                        'depth': 'works'
+                    }
+                }
+            },
+            'extramodule': {
+                'unique': True
+            }
+        }
+
+        config = LayeredConfig(Defaults(defaults))
+        self.assertEquals(defaults, LayeredConfig.dump(config))
+
 
 if __name__ == '__main__':
     unittest.main()
