@@ -34,7 +34,7 @@ class DictSource(ConfigSource):
 
     def typed(self, key):
         # if we have it, we can type it
-        return key in self.source        
+        return key in self.source and self.source[key] is not None
 
     def has(self, key):
         # should has return true for types or only for real values?
