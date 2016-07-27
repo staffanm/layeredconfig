@@ -1478,5 +1478,31 @@ class TestAccessors(TestINIFileHelper, unittest.TestCase):
         self.assertEqual(None, LayeredConfig.get(cfg, "nonexistent"))
         self.assertEqual("NO!", LayeredConfig.get(cfg, "nonexistent", "NO!"))
 
+
+class TestDump(unittest.TestCase):
+    def test_dump(self):
+        defaults = {
+            'home': 'mydata',
+            'processes': 4,
+            'force': True,
+            'extra': ['foo', 'bar'],
+            'mymodule': {
+                'force': False,
+                'extra': ['foo', 'baz'],
+                'arbitrary': {
+                    'nesting': {
+                        'depth': 'works'
+                    }
+                }
+            },
+            'extramodule': {
+                'unique': True
+            }
+        }
+
+        config = LayeredConfig(Defaults(defaults))
+        self.assertEquals(defaults, LayeredConfig.dump(config))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -10,6 +10,7 @@ except ImportError:  # pragma: no cover
     # if on python 2.6
     from ordereddict import OrderedDict
 
+
 class LayeredConfig(object):
     def __init__(self, *sources, **kwargs):
         """Creates a config object from one or more sources and provides
@@ -139,7 +140,7 @@ class LayeredConfig(object):
         for source in config._sources:
             if source.identifier == sourceid:
                 source.set(key, value)
-        # What if no source is found? We silently ignore...
+                # What if no source is found? We silently ignore...
 
     @staticmethod
     def get(config, key, default=None):
@@ -152,22 +153,33 @@ class LayeredConfig(object):
         else:
             return default
 
-# These are methods i'd like to implement next
-#
-#    @staticmethod
-#    def where(config, key):
-#        """returns the identifier of a source where a given key is found, or None."""
-#        pass
-#
-#    @staticmethod
-#    def dump(config):
-#        """Returns the contents of config as a dict."""
-#        pass
-#
-#    @staticmethod
-#    def load(config, d):
-#        """Recreates a dump()ed config object."""
-#        pass
+    @staticmethod
+    def dump(config):
+        """Returns the contents of config as a dict."""
+        def _dump(element):
+            if not isinstance(element, config.__class__):
+                return element
+
+            section = dict()
+            for key, subsection in element._subsections.items():
+                section[key] = _dump(subsection)
+            for key in element:
+                section[key] = getattr(element, key)
+            return section
+
+        return _dump(config)
+
+    # These are methods i'd like to implement next
+    #
+    #    @staticmethod
+    #    def where(config, key):
+    #        """returns the identifier of a source where a given key is found, or None."""
+    #        pass
+    #
+    #    @staticmethod
+    #    def load(config, d):
+    #        """Recreates a dump()ed config object."""
+    #        pass
 
     @staticmethod
     def datetimeconvert(value):
@@ -180,7 +192,6 @@ class LayeredConfig(object):
             return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
         except ValueError:
             return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-
 
     @staticmethod
     def dateconvert(value):
@@ -208,6 +219,8 @@ class LayeredConfig(object):
         else:
             return value
 
+    def __repr__(self):
+        return self.dump(self).__repr__()
 
     def __iter__(self):
         l = set()
@@ -311,4 +324,3 @@ class LayeredConfig(object):
             return self._parent.__setattr__(name, value)
         else:
             raise AttributeError("Configuration key %s doesn't exist" % name)
-
