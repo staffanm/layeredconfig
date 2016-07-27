@@ -1274,6 +1274,12 @@ class TestTyping(unittest.TestCase, TestLayeredConfigHelper):
         cfg = LayeredConfig(Defaults({}), cmdlinesrc)
         self.assertEqual(cfg.force, True)
 
+    def test_layered_typing_for_none_values_in_lower_priority(self):
+        source1 = Defaults({'key': None})
+        source2 = Environment({'KEY': 3})
+        config = LayeredConfig(source1, source2)
+        self.assertEquals(config.key, 3)
+
 
 class TestTypingINIFile(TestINIFileHelper,
                         TestLayeredConfigHelper,
