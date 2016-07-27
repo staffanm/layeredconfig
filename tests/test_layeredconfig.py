@@ -585,6 +585,37 @@ processes: 4
             got = fp.read().replace("\r\n", "\n")
         self.assertEqual(want, got)
 
+
+class YamlOverwritingTestCase(unittest.TestCase):
+    def tearDown(self):
+        os.unlink('source1.yaml')
+        os.unlink('source2.yaml')
+
+    def test_overwriting_yaml_with_missing_subsections(self):
+        with open('source1.yaml', 'w') as fp:
+            fp.write("""
+section:
+  key1: key1_value1
+  subsection:
+    subsection_key1: subsection_key1_value1
+        """)
+
+        with open('source2.yaml', 'w') as fp:
+            fp.write("""
+section:
+  key1: key1_value2
+        """)
+        config = LayeredConfig(
+            YAMLFile('source1.yaml'),
+            YAMLFile('source2.yaml')
+        )
+        self.assertEquals(config.section.key1, 'key1_value2')
+        self.assertEquals(
+            config.section.subsection.subsection_key1,
+            'subsection_key1_value1'
+        )
+
+
 class TestPListFile(unittest.TestCase, TestConfigSourceHelper):
 
     supported_types = (str, int, bool, list, datetime)

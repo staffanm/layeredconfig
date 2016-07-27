@@ -27,6 +27,8 @@ class YAMLFile(DictSource):
             yamlfilename = kwargs['parent'].yamlfilename
         if 'defaults' in kwargs:
             self.source = kwargs['defaults']
+        elif kwargs.get('empty', False):
+            self.source = {}
         else:
             with codecs.open(yamlfilename, encoding="utf-8") as fp:
                 # do we need safe_load?
