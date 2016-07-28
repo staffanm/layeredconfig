@@ -3,7 +3,20 @@
 History
 =======
 
-0.2.2 (2016-01-??)
+0.3.0 (2016-07-28)
+------------------
+
+* New staticmethod ``dump``, which returns the content of the passed
+  config object as a dict.
+* The intrinsic type of any typed setting may not be None any longer.
+* If you subclass LayeredConfig, any created subsection will be
+  instances of your subclass, not the base LayeredConfig class
+* Layering multiple YAML files now works even when earlier files might lack
+  subsections present in latter.
+
+All of the above was done by @jedipi. Thanks!
+
+0.2.2 (2016-01-24)
 ------------------
 
 * Fixed a bug when using a class in a Default configuration for
