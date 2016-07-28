@@ -16,6 +16,7 @@ before_install:
   - cd etcd-v3.0.4-linux-amd64
   - ./etcd > /dev/null &
   - cd ..
+  - sleep 10
 
 install:
   - pip install -r requirements.txt
