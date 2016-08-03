@@ -135,6 +135,16 @@ class TestLayeredConfigHelper(object):
         bool_type = bool if bool in self.supported_types else str
         self.assertEqual(cfg.mymodule.force, bool_type(False))
 
+    def _test_layered_subsection_configs(self, cfg):
+        if date in self.supported_types:
+            date_type = date
+            date_want = date(2014, 10, 15)
+        else:
+            date_type = str
+            date_want = "2014-10-15" # recommended date serialization
+        self.assertIs(type(cfg.mymodule.expires), date_type)
+        self.assertEqual(cfg.mymodule.expires, date_want)
+
 
 class TestConfigSourceHelper(TestLayeredConfigHelper):
 
@@ -206,6 +216,13 @@ class TestConfigSourceHelper(TestLayeredConfigHelper):
         cfg = LayeredConfig(self.complex, self.extra)
         self._test_layered_configs(cfg)
 
+    def test_overwriting_with_missing_subsections(self):
+        # this testcase tests the inverse of test_layered_subsections
+        cfg = LayeredConfig(self.complex, self.extra_layered)
+        self._test_layered_subsection_configs(cfg)
+        
+
+
 # common helper
 class TestINIFileHelper(object):
 
@@ -245,11 +262,20 @@ unique = True
 home = otherdata
 """)
 
+        with open("extra-layered.ini", "w") as fp:
+            fp.write("""
+[mymodule]
+expires = 2014-10-15
+""")
+
+
 
     def tearDown(self):
         super(TestINIFileHelper, self).tearDown()
         os.unlink("simple.ini")
         os.unlink("complex.ini")
+        os.unlink("extra.ini")
+        os.unlink("extra-layered.ini")
 
 
 class TestDefaults(unittest.TestCase, TestConfigSourceHelper):
@@ -278,6 +304,8 @@ class TestDefaults(unittest.TestCase, TestConfigSourceHelper):
 
     extra = Defaults({'home': 'otherdata'})
 
+    extra_layered = Defaults({'mymodule': {'force': True}})
+
 class TestINIFile(TestINIFileHelper, unittest.TestCase,
                   TestConfigSourceHelper):
 
@@ -289,6 +317,7 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase,
         self.simple = INIFile("simple.ini")
         self.complex = INIFile("complex.ini")
         self.extra = INIFile("extra.ini")
+        self.extra_layered = INIFile("extra-layered.ini")
 
     # Overrides of TestHelper.test_get, .test_typed and
     # .test_subsection_nested due to limitations of INIFile
@@ -431,14 +460,19 @@ class TestJSONFile(unittest.TestCase, TestConfigSourceHelper):
         with open("extra.json", "w") as fp:
             fp.write('{"home": "otherdata"}')
 
+        with open("extra-layered.json", "w") as fp:
+            fp.write('{"mymodule": {"force": true}}')
+
         self.simple = JSONFile("simple.json")
         self.complex = JSONFile("complex.json")
         self.extra = JSONFile("extra.json")
+        self.extra_layered = JSONFile("extra-layered.json")
 
     def tearDown(self):
         os.unlink("simple.json")
         os.unlink("complex.json")
         os.unlink("extra.json")
+        os.unlink("extra-layered.json")
 
     def test_get(self):
         self.assertEqual(self.simple.get("home"), "mydata")
@@ -533,14 +567,22 @@ extramodule:
 home: otherdata
 """)
 
+        with open("extra-layered.yaml", "w") as fp:
+            fp.write("""
+mymodule:
+    force: true        
+""")
+                     
         self.simple = YAMLFile("simple.yaml")
         self.complex = YAMLFile("complex.yaml")
         self.extra = YAMLFile("extra.yaml")
+        self.extra_layered = YAMLFile("extra-layered.yaml")
 
     def tearDown(self):
         os.unlink("simple.yaml")
         os.unlink("complex.yaml")
         os.unlink("extra.yaml")
+        os.unlink("extra-layered.yaml")
 
     # Also, strings are unicode when they need to be,
     # str otherwise.
@@ -584,36 +626,6 @@ processes: 4
         with open("complex.yaml") as fp:
             got = fp.read().replace("\r\n", "\n")
         self.assertEqual(want, got)
-
-
-class YamlOverwritingTestCase(unittest.TestCase):
-    def tearDown(self):
-        os.unlink('source1.yaml')
-        os.unlink('source2.yaml')
-
-    def test_overwriting_yaml_with_missing_subsections(self):
-        with open('source1.yaml', 'w') as fp:
-            fp.write("""
-section:
-  key1: key1_value1
-  subsection:
-    subsection_key1: subsection_key1_value1
-        """)
-
-        with open('source2.yaml', 'w') as fp:
-            fp.write("""
-section:
-  key1: key1_value2
-        """)
-        config = LayeredConfig(
-            YAMLFile('source1.yaml'),
-            YAMLFile('source2.yaml')
-        )
-        self.assertEquals(config.section.key1, 'key1_value2')
-        self.assertEquals(
-            config.section.subsection.subsection_key1,
-            'subsection_key1_value1'
-        )
 
 
 class TestPListFile(unittest.TestCase, TestConfigSourceHelper):
@@ -698,14 +710,30 @@ class TestPListFile(unittest.TestCase, TestConfigSourceHelper):
 </dict>
 </plist>
 """)
+
+        with open("extra-layered.plist", "w") as fp:
+            fp.write("""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>mymodule</key>
+        <dict>
+                <key>force</key>
+                <true/>
+        </dict>
+</dict>
+</plist>
+""")
         self.simple = PListFile("simple.plist")
         self.complex = PListFile("complex.plist")
         self.extra = PListFile("extra.plist")
+        self.extra_layered = PListFile("extra-layered.plist")
 
     def tearDown(self):
         os.unlink("simple.plist")
         os.unlink("complex.plist")
         os.unlink("extra.plist")
+        os.unlink("extra-layered.plist")
 
     # override only because plists cannot handle date objects (only datetime)
     def test_get(self):
@@ -818,14 +846,23 @@ extramodule.unique = True
 
 home = 'otherdata'
 """)
+
+        with open("extra-layered.py", "w") as fp:
+            fp.write("""from __future__ import unicode_literals
+
+mymodule = Subsection()
+mymodule.force = True
+""")
         self.simple = PyFile("simple.py")
         self.complex = PyFile("complex.py")
         self.extra = PyFile("extra.py")
+        self.extra_layered = PyFile("extra-layered.py")
 
     def tearDown(self):
         os.unlink("simple.py")
         os.unlink("complex.py")
         os.unlink("extra.py")
+        os.unlink("extra-layered.py")
 
 
 class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
@@ -891,6 +928,10 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
         pass  # this test has no meaning for Command line arguments
               # (can't have two sets of them)
 
+    def test_overwriting_with_missing_subsections(self):
+        pass  # this test has no meaning for Command line arguments
+              # (can't have two sets of them)
+
     def test_set(self):
         self.simple.set("home", "away from home")
         self.assertEqual(self.simple.get("home"), "away from home")
@@ -934,10 +975,6 @@ class TestCommandlineConfigured(TestCommandline):
         # re-enable the original impl of test_config_subsections
         TestConfigSourceHelper.test_config_subsections(self)
 
-    def test_layered_subsections(self):
-        pass  # this test has no meaning for Command line arguments
-              # (can't have two sets of them)
-
     def test_typed(self):
         # re-enable the original impl of test_get
         TestConfigSourceHelper.test_typed(self)
@@ -976,6 +1013,11 @@ class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
     def test_layered_subsections(self):
         pass  # this test has no meaning for environment variables
               # (can't have two sets of them)
+
+    def test_overwriting_with_missing_subsections(self):
+        pass  # this test has no meaning for environment variables
+              # (can't have two sets of them)
+
 
     def test_typed(self):
         for key in self.simple.keys():
@@ -1035,6 +1077,9 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
               # (however, we could concievably have two distinct
               # servers -- but that isn't supported on ground of being
               # too complicated)
+
+    def test_overwriting_with_missing_subsections(self):
+        pass  # ditto
 
     def test_typed(self):
         for key in self.simple.keys():
