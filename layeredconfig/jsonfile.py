@@ -28,6 +28,8 @@ class JSONFile(DictSource):
             jsonfilename = kwargs['parent'].jsonfilename
         if 'defaults' in kwargs:
             self.source = kwargs['defaults']
+        elif kwargs.get('empty', False):
+            self.source = {}
         else:
             with open(jsonfilename) as fp:
                 self.source = json.load(fp)

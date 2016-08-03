@@ -35,6 +35,8 @@ class PListFile(DictSource):
             plistfilename = kwargs['parent'].plistfilename
         if 'defaults' in kwargs:
             self.source = kwargs['defaults']
+        elif kwargs.get('empty', False):
+            self.source = {}
         else:
             with open(plistfilename, "rb") as fp:
                 self.source = self.reader(fp)
