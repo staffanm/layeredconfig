@@ -3,7 +3,7 @@
 History
 =======
 
-0.3.0 (2016-07-28)
+0.3.0 (2016-08-06)
 ------------------
 
 * New staticmethod ``dump``, which returns the content of the passed
@@ -11,10 +11,10 @@ History
 * The intrinsic type of any typed setting may not be None any longer.
 * If you subclass LayeredConfig, any created subsection will be
   instances of your subclass, not the base LayeredConfig class
-* Layering multiple YAML files now works even when earlier files might lack
-  subsections present in latter.
+* Layering multiple configuration files now works even when earlier
+  files might lack subsections present in latter.
 
-All of the above was done by @jedipi. Thanks!
+All of the above was done by @jedipi. Many thanks!
 
 0.2.2 (2016-01-24)
 ------------------
