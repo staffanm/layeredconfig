@@ -155,7 +155,13 @@ class LayeredConfig(object):
 
     @staticmethod
     def dump(config):
-        """Returns the contents of config as a dict."""
+        """Returns the entire content of the config object in a way that can
+        be easily examined, compared or dumped to a string or file.
+
+        :param config: The configuration object to dump
+        :rtype: dict
+
+        """
         def _dump(element):
             if not isinstance(element, config.__class__):
                 return element
