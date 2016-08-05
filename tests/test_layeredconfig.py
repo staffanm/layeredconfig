@@ -18,6 +18,7 @@ from datetime import date, datetime
 import argparse
 import json
 from operator import itemgetter
+from copy import deepcopy
 try:
     from collections import OrderedDict
 except ImportError:  # pragma: no cover
@@ -39,7 +40,6 @@ class TestLayeredConfigHelper(object):
 
     # Testcases for less-capable sources may override this
     supported_types = (str, int, bool, list, date, datetime)
-    transforms = {}
     supports_nesting = True
 
     def _test_config_singlesection(self, cfg):
@@ -50,13 +50,10 @@ class TestLayeredConfigHelper(object):
         self.assertIs(type(cfg.processes), int_type)
         self.assertEqual(cfg.processes, int_type(4))
 
-        bool_type = bool if bool in self.supported_types else str
-        # ugly hack to work around the case that etcd will transform a
-        # (string) value of "True" to "true". FIXME: This doesn't seem
-        # to be true as of later Etcd versions?
-        bool_transform = self.transforms.get(bool, bool_type)
-        self.assertIs(type(cfg.force), bool_type)
-        self.assertEqual(cfg.force, bool_transform(True))
+        if bool in self.supported_types:
+            self.assertEqual(cfg.force, True)
+        else:
+            self.assertEqual(cfg.force, "True")
 
         if list in self.supported_types:
             list_type = list
@@ -96,12 +93,10 @@ class TestLayeredConfigHelper(object):
         with self.assertRaises(AttributeError):
             cfg.mymodule.processes
 
-        bool_type = bool if bool in self.supported_types else str
-        # ugly hack to work around the case that etcd will transform a
-        # (string) value of "True" to "true"
-        bool_transform = self.transforms.get(bool, bool_type)
-        self.assertEqual(cfg.force, bool_transform(True))
-        self.assertEqual(cfg.mymodule.force, bool_transform(False))
+        if bool in self.supported_types:
+            self.assertEqual(cfg.mymodule.force, False)
+        else:
+            self.assertEqual(cfg.mymodule.force, "False")
 
         if list in self.supported_types:
             list_type = list
@@ -221,7 +216,59 @@ class TestConfigSourceHelper(TestLayeredConfigHelper):
         cfg = LayeredConfig(self.complex, self.extra_layered)
         self._test_layered_subsection_configs(cfg)
         
+    DUMP_DEFAULTS = {'processes': int,
+                     'force': bool,
+                     'extra': list,
+                     'mymodule': {
+                         'force': bool,
+                         'extra': list,
+                         'expires': date,
+                     },
+                     'extramodule': {
+                         'unique': bool
+                     }
+    }
+    DUMP_WANT = {'home': 'mydata',
+                 'processes': 4,
+                 'force': True,
+                 'extra': ['foo', 'bar'],
+                 'mymodule': {
+                     'force': False,
+                     'extra': ['foo', 'baz'],
+                     'expires': date(2014, 10, 15),
+                     'arbitrary': {
+                        'nesting': {
+                            'depth': 'works'
+                        }
+                    }
+                 },
+                 'extramodule': {
+                     'unique': True
+                 }
+    } 
+    def test_dump(self):
+        want = deepcopy(self.DUMP_WANT)
+        if not self.supports_nesting:
+            # INIFile does not support nested sections
+            del want['mymodule']['arbitrary']
+        cfg = LayeredConfig(Defaults(self.DUMP_DEFAULTS), self.complex)
+        got = LayeredConfig.dump(cfg)
+        self.maxDiff = None
+        self.assertEquals(want, got)
 
+    
+    def test_dump_layered(self):
+        want = deepcopy(self.DUMP_WANT)
+        if not self.supports_nesting:
+            # INIFile does not support nested sections
+            del want['mymodule']['arbitrary']
+        want['home'] = 'otherdata'
+        cfg = LayeredConfig(Defaults(self.DUMP_DEFAULTS), self.complex, self.extra)
+        got = LayeredConfig.dump(cfg)
+        self.maxDiff = None
+        self.assertEquals(want, got)
+
+    
 
 # common helper
 class TestINIFileHelper(object):
@@ -805,6 +852,14 @@ class TestPListFile(unittest.TestCase, TestConfigSourceHelper):
             got = fp.read().replace("\r\n", "\n")
         self.assertEqual(want, got)
 
+    def test_typed(self):
+        for key in self.simple.keys():
+            # PList can type ints, bools, lists and datetimes (but not dates)
+            if key in ("processes", "force", "extra", "lastrun"):
+                self.assertTrue(self.simple.typed(key))
+            else:
+                self.assertFalse(self.simple.typed(key))
+
 
 class TestPyFile(unittest.TestCase, TestConfigSourceHelper):
 
@@ -932,6 +987,9 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
         pass  # this test has no meaning for Command line arguments
               # (can't have two sets of them)
 
+    def test_dump_layered(self):
+        pass
+
     def test_set(self):
         self.simple.set("home", "away from home")
         self.assertEqual(self.simple.get("home"), "away from home")
@@ -1018,6 +1076,8 @@ class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
         pass  # this test has no meaning for environment variables
               # (can't have two sets of them)
 
+    def test_dump_layered(self):
+        pass
 
     def test_typed(self):
         for key in self.simple.keys():
@@ -1036,7 +1096,6 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
         return str(value).lower()
 
     supported_types = (str,)
-    transforms = {bool: strlower}
 
     def _clear_server(self):
         resp = requests.get(ETCD_BASE + "/")
@@ -1051,7 +1110,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
         self._clear_server()
         requests.put(ETCD_BASE + "/home", data={'value': 'mydata'})
         requests.put(ETCD_BASE + "/processes", data={'value': '4'})
-        requests.put(ETCD_BASE + "/force", data={'value': "true"})
+        requests.put(ETCD_BASE + "/force", data={'value': "True"})
         requests.put(ETCD_BASE + "/extra", data={'value': "foo, bar"})
         requests.put(ETCD_BASE + "/expires", data={'value': "2014-10-15"})
         requests.put(ETCD_BASE + "/lastrun", data={'value': "2014-10-15 14:32:07"})
@@ -1062,13 +1121,13 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
         self._clear_server()
         requests.put(ETCD_BASE + "/home", data={'value': "mydata"})
         requests.put(ETCD_BASE + "/processes", data={'value': "4"})
-        requests.put(ETCD_BASE + "/force", data={'value': "true"})
+        requests.put(ETCD_BASE + "/force", data={'value': "True"})
         requests.put(ETCD_BASE + "/extra", data={'value': "foo, bar"})
-        requests.put(ETCD_BASE + "/mymodule/force", data={'value': "false"})
+        requests.put(ETCD_BASE + "/mymodule/force", data={'value': "False"})
         requests.put(ETCD_BASE + "/mymodule/extra", data={'value': "foo, baz"})
         requests.put(ETCD_BASE + "/mymodule/expires", data={'value': "2014-10-15"})
         requests.put(ETCD_BASE + "/mymodule/arbitrary/nesting/depth", data={'value': "works"})
-        requests.put(ETCD_BASE + "/extramodule/unique", data={'value': "true"})
+        requests.put(ETCD_BASE + "/extramodule/unique", data={'value': "True"})
         return EtcdStore()
 
     def test_layered_subsections(self):
@@ -1081,6 +1140,9 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
     def test_overwriting_with_missing_subsections(self):
         pass  # ditto
 
+    def test_dump_layered(self):
+        pass
+
     def test_typed(self):
         for key in self.simple.keys():
             self.assertFalse(self.simple.typed(key))
@@ -1092,7 +1154,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
         conf = self.simple
         self.assertEqual(conf.get("home"), "mydata")
         self.assertEqual(conf.get("processes"), "4")
-        self.assertEqual(conf.get("force"), "true")
+        self.assertEqual(conf.get("force"), "True")
         self.assertEqual(conf.get("extra"), "foo, bar")
         self.assertEqual(conf.get("expires"), "2014-10-15")
         self.assertEqual(conf.get("lastrun"), "2014-10-15 14:32:07")
@@ -1139,7 +1201,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
             "createdIndex": 4629,
             "key": "/force",
             "modifiedIndex": 4629,
-            "value": "true"
+            "value": "True"
         },
         {
             "createdIndex": 4630,
@@ -1157,7 +1219,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
                     "createdIndex": 4631,
                     "key": "/mymodule/force",
                     "modifiedIndex": 4631,
-                    "value": "false"
+                    "value": "False"
                 },
                 {
                     "createdIndex": 4632,
@@ -1205,7 +1267,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
                     "createdIndex": 4635,
                     "key": "/extramodule/unique",
                     "modifiedIndex": 4635,
-                    "value": "true"
+                    "value": "True"
                 }
             ]
         }

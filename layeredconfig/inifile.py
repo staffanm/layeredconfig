@@ -1,5 +1,6 @@
-import os
+import codecs
 import logging
+import os
 import six
 from six.moves import configparser
 from six import text_type as str
@@ -57,7 +58,10 @@ class INIFile(ConfigSource):
                     self.source.add_section(rootsection)
             else:
                 self.source = configparser.RawConfigParser(dict_type=OrderedDict)
-                self.source.read(inifilename)
+                # we don't know the encoding of this file; assume utf-8
+                with codecs.open(inifilename, encoding="utf-8") as fp:
+                    self.source.readfp(fp)
+                
                 self.inifilename = inifilename
         # only used when creating new INIFile objects internally
         elif 'config' in kwargs:  

@@ -1,4 +1,5 @@
 from datetime import datetime
+import codecs
 import plistlib
 import sys
 
@@ -61,6 +62,23 @@ class PListFile(DictSource):
                 if isinstance(ret[idx], bytes):
                     ret[idx] = ret[idx].decode(self.encoding)
         return ret
+
+    def typed(self, key):
+        # if the value is anything other than a string, we can be sure
+        # that it contains useful type information.
+        return self.has(key) and not isinstance(self.get(key), str)
+
+    def keys(self):
+        for k in super(PListFile, self).keys():
+            if isinstance(k, bytes):
+                k = k.decode(self.encoding)
+            yield k
+
+    def subsections(self):
+        for k in super(PListFile, self).subsections():
+            if isinstance(k, bytes):
+                k = k.decode(self.encoding)
+            yield k
 
     def save(self):
         assert not self.parent, "save() should only be called on root objects"

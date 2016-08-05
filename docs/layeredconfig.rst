@@ -44,6 +44,14 @@ layeredconfig.environment module
     :undoc-members:
     :show-inheritance:
 
+layeredconfig.etcdstore module
+------------------------------
+
+.. automodule:: layeredconfig.etcdstore
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 layeredconfig.inifile module
 ----------------------------
 
@@ -72,6 +80,14 @@ layeredconfig.plistfile module
 ------------------------------
 
 .. automodule:: layeredconfig.plistfile
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+layeredconfig.pyfile module
+---------------------------
+
+.. automodule:: layeredconfig.pyfile
     :members:
     :undoc-members:
     :show-inheritance:

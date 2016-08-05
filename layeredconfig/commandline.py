@@ -212,6 +212,10 @@ class Commandline(ConfigSource):
         setattr(self.source, key, value)
 
     def typed(self, key):
+        # if the config value has a non-string type, then it's typed
+        if self.has(key) and not isinstance(self.get(key), str):
+            return True
+
         if self._provided_parser:
             # a provided parser (not a bootstrapped parser) should be
             # able to convert input to typed data -- but only for

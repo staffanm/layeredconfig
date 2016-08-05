@@ -30,9 +30,6 @@ class YAMLFile(DictSource):
         elif kwargs.get('empty', False):
             self.source = {}
         else:
-
-
-
             with codecs.open(yamlfilename, encoding="utf-8") as fp:
                 # do we need safe_load?
                 self.source = yaml.safe_load(fp.read())
