@@ -7,7 +7,8 @@ History
 ------------------
 
 * New staticmethod ``dump``, which returns the content of the passed
-  config object as a dict.
+  config object as a dict. This is also used as a printable
+  representation of a config object (through ``__repr__``).
 * The intrinsic type of any typed setting may not be None any longer.
 * If you subclass LayeredConfig, any created subsection will be
   instances of your subclass, not the base LayeredConfig class
@@ -15,6 +16,9 @@ History
   files might lack subsections present in latter.
 
 All of the above was done by @jedipi. Many thanks!
+
+A number of unreported bugs, mostly concerning unicode handling and
+type conversion in various sources, was also fixed.
 
 0.2.2 (2016-01-24)
 ------------------
