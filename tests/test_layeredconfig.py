@@ -1545,6 +1545,51 @@ somevar = value
 </plist>""", PListFile)
 
 
+class TestLayeredWithSingleSource(unittest.TestCase):
+    # generalization of the issue demonstrated by
+    # https://github.com/staffanm/layeredconfig/issues/8 -- sources
+    # that cannot be duplicated/layered by themselves (Environment,
+    # Commandline, EtcdStore) should be tested with other sources,
+    # particularly with subsections
+
+    def setUp(self):
+        with open("simple.yaml", "w") as fp:
+            fp.write("""
+section:
+   subsection:
+      key: value
+""")
+        self.yamlsource = YAMLFile("simple.yaml")
+
+    def tearDown(self):
+        os.unlink("simple.yaml")
+        
+    def test_commandline(self):
+        cfg = LayeredConfig(self.yamlsource, Commandline())
+        self.assertEqual("value", cfg.section.subsection.key)
+        
+        cmdline = ["./foo.py", "--foo=bar"]
+        cfg = LayeredConfig(self.yamlsource, Commandline(cmdline))
+        self.assertEqual("value", cfg.section.subsection.key)
+
+        cmdline = ["./foo.py", "--foo=bar", "--section-subsection-key=other"]
+        cfg = LayeredConfig(self.yamlsource, Commandline(cmdline))
+        self.assertEqual("other", cfg.section.subsection.key)
+
+    def test_environment(self):
+        cfg = LayeredConfig(self.yamlsource, Environment())
+        self.assertEqual("value", cfg.section.subsection.key)
+        
+        env = {'MYAPP_FOO': 'bar'}
+        cfg = LayeredConfig(self.yamlsource, Environment(env, prefix="MYAPP_"))
+        self.assertEqual("value", cfg.section.subsection.key)
+
+        env = {'MYAPP_FOO': 'bar',
+               'MYAPP_SECTION_SUBSECTION_KEY': 'other'}
+        cfg = LayeredConfig(self.yamlsource, Environment(env, prefix="MYAPP_"))
+        self.assertEqual("other", cfg.section.subsection.key)
+        
+
 
 class TestModifications(TestINIFileHelper, unittest.TestCase):
     def test_modified(self):

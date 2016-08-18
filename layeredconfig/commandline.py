@@ -181,7 +181,11 @@ class Commandline(ConfigSource):
         # argparse.Namespace object. Therefore, we can create a list
         # of subsections
         yielded = set()
-        for args in dict(self.source._get_kwargs()).keys():
+        if self.source:
+            subsectionsource = dict(self.source._get_kwargs())
+        else:
+            subsectionsource = {}
+        for args in subsectionsource.keys():
             if args.startswith(self.sectionkey):
                 args = args[len(self.sectionkey):]
                 if args.startswith("_"): # sectionsep
