@@ -11,6 +11,7 @@ History
 * The default URI used for EtcdStore was changed to reflect that port
   2379 should be used instead of 4001 (which was the default for etcd
   1.*).
+* Support for Python 3.2 was dropped.
 
 0.3.0 (2016-08-06)
 ------------------
