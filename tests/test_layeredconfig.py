@@ -1086,7 +1086,7 @@ class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
 
 # NB: This assumes that an etcd daemon is running with default
 # settings
-ETCD_BASE = "http://127.0.0.1:4001/v2/keys"
+ETCD_BASE = "http://127.0.0.1:2379/v2/keys"
 
 @unittest.skipIf("APPVEYOR" in os.environ,
                  "Not running etcd dependent tests on Appveyor")
@@ -1275,7 +1275,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
 }"""
         want = json.loads(want)
         indexfilter(want)
-        got = requests.get("http://localhost:4001/v2/keys/?recursive=true").json()['node']
+        got = requests.get("http://localhost:2379/v2/keys/?recursive=true").json()['node']
         indexfilter(got)
         self.assertEqual(want, got)
 
