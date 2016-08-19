@@ -2,6 +2,15 @@
 
 History
 =======
+0.3.1 (2016-08-20)
+------------------
+
+* Fixed bug #8 (layering a Commandline source over a YAMLFile with
+  defined subsection resulted in crash in initialization. Thanks to
+  @AnsonT for reporting this!
+* The default URI used for EtcdStore was changed to reflect that port
+  2379 should be used instead of 4001 (which was the default for etcd
+  1.*).
 
 0.3.0 (2016-08-06)
 ------------------

@@ -5,7 +5,7 @@ import requests
 
 class EtcdStore(ConfigSource):
 
-    def __init__(self, baseurl="http://127.0.0.1:4001/v2/",
+    def __init__(self, baseurl="http://127.0.0.1:2379/v2/",
                  **kwargs):
         """Loads configuration from a `etcd store
         <https://github.com/coreos/etcd>`_.
