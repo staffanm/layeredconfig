@@ -15,12 +15,14 @@ before_install:
   - tar xzvf etcd-v3.0.4-linux-amd64.tar.gz
   - cd etcd-v3.0.4-linux-amd64
   - ./etcd > /dev/null &
-  - sleep 10
   - cd ..
 
 install:
   - pip install -r requirements.txt
   - pip install coverage==3.7.1 coveralls
+
+before_script:
+  - sleep 10
 
 # command to run tests, e.g. python setup.py test
 script:
