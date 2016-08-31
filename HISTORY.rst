@@ -2,7 +2,13 @@
 
 History
 =======
-0.3.1 (2016-08-20)
+
+0.3.2 (???)
+-----------
+
+* To be determined...
+
+0.3.1 (2016-08-31)
 ------------------
 
 * Fixed bug #8 (layering a Commandline source over a YAMLFile with
