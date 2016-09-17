@@ -971,7 +971,6 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
             else:
                 self.assertFalse(self.simple.typed(key))
 
-
     def test_config_subsections(self):
         # this case uses valued parameter for --force et al, which
         # cannot be reliably converted to bools using only intrinsic
@@ -993,6 +992,17 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
     def test_set(self):
         self.simple.set("home", "away from home")
         self.assertEqual(self.simple.get("home"), "away from home")
+
+    def test_subsections(self):
+        # https://github.com/staffanm/layeredconfig/issues/9 -- we
+        # want to make sure that cfg.db.host returns a simple string,
+        # not a 1-element array of strings
+        cmdline = ['--dbhost=string', '--db_host=array_of_strings']
+        cfg = LayeredConfig(Commandline(cmdline))
+        self.assertIsInstance(cfg.dbhost, str)
+        self.assertEquals(cfg.dbhost, 'string')
+        self.assertIsInstance(cfg.db.host, str)
+        self.assertEquals(cfg.db.host, 'array_of_strings')
 
 
 class TestCommandlineConfigured(TestCommandline):
