@@ -168,7 +168,8 @@ class Commandline(ConfigSource):
         r = getattr(self.source, key)
         # undo the automatic list behaviour for autodiscovered
         # arguments (which has store='append')
-        if (key.replace("_", "-") in self.autoargs and
+        key = key.replace("_", "-")
+        if (key in self.autoargs and
             isinstance(r, list) and len(r) == 1):
             return r[0]
         else:

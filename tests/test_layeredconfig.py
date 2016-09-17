@@ -993,12 +993,13 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
         self.simple.set("home", "away from home")
         self.assertEqual(self.simple.get("home"), "away from home")
 
-    def test_subsections(self):
+    def test_custom_sectionsep(self):
         # https://github.com/staffanm/layeredconfig/issues/9 -- we
         # want to make sure that cfg.db.host returns a simple string,
-        # not a 1-element array of strings
+        # not a 1-element array of strings, even when not using the
+        # default section separator '-'.
         cmdline = ['--dbhost=string', '--db_host=array_of_strings']
-        cfg = LayeredConfig(Commandline(cmdline))
+        cfg = LayeredConfig(Commandline(cmdline, sectionsep="_"))
         self.assertIsInstance(cfg.dbhost, str)
         self.assertEquals(cfg.dbhost, 'string')
         self.assertIsInstance(cfg.db.host, str)
