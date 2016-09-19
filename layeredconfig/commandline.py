@@ -168,7 +168,7 @@ class Commandline(ConfigSource):
         r = getattr(self.source, key)
         # undo the automatic list behaviour for autodiscovered
         # arguments (which has store='append')
-        key = key.replace("_", "-")
+        key = key.replace("_", self.sectionsep)
         if (key in self.autoargs and
             isinstance(r, list) and len(r) == 1):
             return r[0]
@@ -207,6 +207,7 @@ class Commandline(ConfigSource):
             key = self.sectionkey + "_" + key
         
         return Commandline(self.commandline,
+                           sectionsep=self.sectionsep,
                            source=self.source,
                            parser=self.parser,
                            provided_parser=self._provided_parser,

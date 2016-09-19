@@ -999,7 +999,8 @@ class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
         # not a 1-element array of strings, even when not using the
         # default section separator '-'.
         cmdline = ['--dbhost=string', '--db_host=array_of_strings']
-        cfg = LayeredConfig(Commandline(cmdline, sectionsep="_"))
+        src = Commandline(cmdline, sectionsep="_")
+        cfg = LayeredConfig(src)
         self.assertIsInstance(cfg.dbhost, str)
         self.assertEquals(cfg.dbhost, 'string')
         self.assertIsInstance(cfg.db.host, str)
