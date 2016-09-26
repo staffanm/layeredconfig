@@ -4,7 +4,7 @@ History
 =======
 
 0.3.2 (2016-09-26)
------------
+------------------
 
 * Fixed bug #9 (Custom section separators caused values to be
   retrieved as lists, not single values). Thanks to @numbnut for
