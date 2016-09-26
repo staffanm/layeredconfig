@@ -3,10 +3,12 @@
 History
 =======
 
-0.3.2 (???)
+0.3.2 (2016-09-26)
 -----------
 
-* To be determined...
+* Fixed bug #9 (Custom section separators caused values to be
+  retrieved as lists, not single values). Thanks to @numbnut for
+  reporting this!
 
 0.3.1 (2016-08-31)
 ------------------
