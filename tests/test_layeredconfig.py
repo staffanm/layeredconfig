@@ -36,7 +36,7 @@ from layeredconfig import (LayeredConfig, Defaults, INIFile, JSONFile,
                            Commandline, EtcdStore)
 
 
-class TestLayeredConfigHelper(object):
+class LayeredConfigHelperTests(object):
 
     # Testcases for less-capable sources may override this
     supported_types = (str, int, bool, list, date, datetime)
@@ -141,7 +141,7 @@ class TestLayeredConfigHelper(object):
         self.assertEqual(cfg.mymodule.expires, date_want)
 
 
-class TestConfigSourceHelper(TestLayeredConfigHelper):
+class ConfigSourceHelperTests(LayeredConfigHelperTests):
 
     # First, a number of straightforward tests for any
     # ConfigSource-derived object. Concrete test classes should set up
@@ -215,7 +215,7 @@ class TestConfigSourceHelper(TestLayeredConfigHelper):
         # this testcase tests the inverse of test_layered_subsections
         cfg = LayeredConfig(self.complex, self.extra_layered)
         self._test_layered_subsection_configs(cfg)
-        
+
     DUMP_DEFAULTS = {'processes': int,
                      'force': bool,
                      'extra': list,
@@ -245,7 +245,7 @@ class TestConfigSourceHelper(TestLayeredConfigHelper):
                  'extramodule': {
                      'unique': True
                  }
-    } 
+    }
     def test_dump(self):
         want = deepcopy(self.DUMP_WANT)
         if not self.supports_nesting:
@@ -256,7 +256,7 @@ class TestConfigSourceHelper(TestLayeredConfigHelper):
         self.maxDiff = None
         self.assertEquals(want, got)
 
-    
+
     def test_dump_layered(self):
         want = deepcopy(self.DUMP_WANT)
         if not self.supports_nesting:
@@ -268,7 +268,7 @@ class TestConfigSourceHelper(TestLayeredConfigHelper):
         self.maxDiff = None
         self.assertEquals(want, got)
 
-    
+
 
 # common helper
 class TestINIFileHelper(object):
@@ -325,7 +325,7 @@ expires = 2014-10-15
         os.unlink("extra-layered.ini")
 
 
-class TestDefaults(unittest.TestCase, TestConfigSourceHelper):
+class TestDefaults(unittest.TestCase, ConfigSourceHelperTests):
 
     simple = Defaults({'home': 'mydata',
                        'processes': 4,
@@ -354,7 +354,7 @@ class TestDefaults(unittest.TestCase, TestConfigSourceHelper):
     extra_layered = Defaults({'mymodule': {'force': True}})
 
 class TestINIFile(TestINIFileHelper, unittest.TestCase,
-                  TestConfigSourceHelper):
+                  ConfigSourceHelperTests):
 
     supported_types = (str,)
     supports_nesting = False
@@ -471,7 +471,7 @@ unique = True
         self.assertEqual(want, got)
 
 
-class TestJSONFile(unittest.TestCase, TestConfigSourceHelper):
+class TestJSONFile(unittest.TestCase, ConfigSourceHelperTests):
 
     supported_types = (str, int, bool, list)
 
@@ -576,7 +576,7 @@ class TestJSONFile(unittest.TestCase, TestConfigSourceHelper):
         self.assertEqual(want, got)
 
 class TestYAMLFile(unittest.TestCase,
-                   TestConfigSourceHelper):
+                   ConfigSourceHelperTests):
     def setUp(self):
         with open("simple.yaml", "w") as fp:
             fp.write("""
@@ -617,9 +617,9 @@ home: otherdata
         with open("extra-layered.yaml", "w") as fp:
             fp.write("""
 mymodule:
-    force: true        
+    force: true
 """)
-                     
+
         self.simple = YAMLFile("simple.yaml")
         self.complex = YAMLFile("complex.yaml")
         self.extra = YAMLFile("extra.yaml")
@@ -675,7 +675,7 @@ processes: 4
         self.assertEqual(want, got)
 
 
-class TestPListFile(unittest.TestCase, TestConfigSourceHelper):
+class TestPListFile(unittest.TestCase, ConfigSourceHelperTests):
 
     supported_types = (str, int, bool, list, datetime)
 
@@ -861,7 +861,7 @@ class TestPListFile(unittest.TestCase, TestConfigSourceHelper):
                 self.assertFalse(self.simple.typed(key))
 
 
-class TestPyFile(unittest.TestCase, TestConfigSourceHelper):
+class TestPyFile(unittest.TestCase, ConfigSourceHelperTests):
 
     def setUp(self):
         with open("simple.py", "w") as fp:
@@ -920,7 +920,7 @@ mymodule.force = True
         os.unlink("extra-layered.py")
 
 
-class TestCommandline(unittest.TestCase, TestConfigSourceHelper):
+class TestCommandline(unittest.TestCase, ConfigSourceHelperTests):
 
     # Note: bool is "half-way" supported. Only value-less parameters
     # are typed as bool (eg "--force", not "--force=True")
@@ -1039,18 +1039,18 @@ class TestCommandlineConfigured(TestCommandline):
 
     def test_get(self):
         # re-enable the original impl of test_get
-        TestConfigSourceHelper.test_get(self)
+        ConfigSourceHelperTests.test_get(self)
 
     def test_config_subsections(self):
         # re-enable the original impl of test_config_subsections
-        TestConfigSourceHelper.test_config_subsections(self)
+        ConfigSourceHelperTests.test_config_subsections(self)
 
     def test_typed(self):
         # re-enable the original impl of test_get
-        TestConfigSourceHelper.test_typed(self)
+        ConfigSourceHelperTests.test_typed(self)
 
 
-class TestEnvironment(unittest.TestCase, TestConfigSourceHelper):
+class TestEnvironment(unittest.TestCase, ConfigSourceHelperTests):
 
     supported_types = (str,)
 
@@ -1102,7 +1102,7 @@ ETCD_BASE = "http://127.0.0.1:2379/v2/keys"
 
 @unittest.skipIf("APPVEYOR" in os.environ,
                  "Not running etcd dependent tests on Appveyor")
-class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
+class TestEtcdStore(unittest.TestCase, ConfigSourceHelperTests):
     maxDiff = None
     def strlower(value):
         return str(value).lower()
@@ -1292,7 +1292,7 @@ class TestEtcdStore(unittest.TestCase, TestConfigSourceHelper):
         self.assertEqual(want, got)
 
 
-class TestTyping(unittest.TestCase, TestLayeredConfigHelper):
+class TestTyping(unittest.TestCase, LayeredConfigHelperTests):
     types = {'home': str,
              'processes': int,
              'force': bool,
@@ -1401,7 +1401,7 @@ class TestTyping(unittest.TestCase, TestLayeredConfigHelper):
 
 
 class TestTypingINIFile(TestINIFileHelper,
-                        TestLayeredConfigHelper,
+                        LayeredConfigHelperTests,
                         unittest.TestCase):
     types = {'home': str,
              'processes': int,
@@ -1575,11 +1575,11 @@ section:
 
     def tearDown(self):
         os.unlink("simple.yaml")
-        
+
     def test_commandline(self):
         cfg = LayeredConfig(self.yamlsource, Commandline())
         self.assertEqual("value", cfg.section.subsection.key)
-        
+
         cmdline = ["./foo.py", "--foo=bar"]
         cfg = LayeredConfig(self.yamlsource, Commandline(cmdline))
         self.assertEqual("value", cfg.section.subsection.key)
@@ -1591,7 +1591,7 @@ section:
     def test_environment(self):
         cfg = LayeredConfig(self.yamlsource, Environment())
         self.assertEqual("value", cfg.section.subsection.key)
-        
+
         env = {'MYAPP_FOO': 'bar'}
         cfg = LayeredConfig(self.yamlsource, Environment(env, prefix="MYAPP_"))
         self.assertEqual("value", cfg.section.subsection.key)
@@ -1600,7 +1600,7 @@ section:
                'MYAPP_SECTION_SUBSECTION_KEY': 'other'}
         cfg = LayeredConfig(self.yamlsource, Environment(env, prefix="MYAPP_"))
         self.assertEqual("other", cfg.section.subsection.key)
-        
+
 
 
 class TestModifications(TestINIFileHelper, unittest.TestCase):
