@@ -24,7 +24,8 @@ class Environment(ConfigSource):
         :param lower: If true, lowercase the name of environment
                       variables (since these typically uses uppercase)
         :type  lower: True
-
+        :param sectionsep: An alternate section separator instead of ``-``.
+        :type  sectionsep: str
         """
         super(Environment, self).__init__(**kwargs)
         if environ is None:
