@@ -37,8 +37,8 @@ class DictSource(ConfigSource):
         return key in self.source and self.source[key] is not None
 
     def has(self, key):
-        # should has return true for types or only for real values?
-        return key in self.source and not isinstance(self.source[key], type)
+        # should return true for real values only, not type placeholders or sub-dicts
+        return key in self.source and not isinstance(self.source[key], (type, dict))
 
     def get(self, key):
         return self.source[key]

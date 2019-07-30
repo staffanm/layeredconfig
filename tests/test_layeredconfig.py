@@ -1497,6 +1497,18 @@ class TestSubsections(unittest.TestCase):
         cfg = SubclassedLayeredConfig(Defaults(defaults))
         self.assertIsInstance(cfg.subsection, SubclassedLayeredConfig)
 
+    def test_cascading_parent_subsections(self):
+        defaults = {'home': 'mydata',
+                    'subsection': {'processes': 4}}
+        cfg = LayeredConfig(Defaults(defaults),
+                            cascade=True)
+        # if the DictSource has a bug in its has() implementatation,
+        # and we use cascade, any subsection will have an automatic
+        # subsection with the same name of its own, and which will
+        # yield a raw dict
+        with self.assertRaises(AttributeError):
+            cfg.subsection.subsection
+
 
 class TestLayeredSubsections(unittest.TestCase):
 

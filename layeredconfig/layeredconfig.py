@@ -290,7 +290,7 @@ class LayeredConfig(object):
                     # we can't type this data, return as-is
                     return source.get(name)
         else:
-            if self._cascade and self._parent:
+            if self._cascade and self._parent and name not in self._parent._subsections:
                 return self._parent.__getattr__(name)
 
         raise AttributeError("Configuration key %s doesn't exist" % name)
