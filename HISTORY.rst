@@ -14,6 +14,7 @@ History
 * (TBD) The sectionsep parameter to the Commandline constructor was not
   respected, instead the separator "_" was hardcoded. Thanks to
   @dginzbourg for reporting this!
+* Support for python 3.3 and 2.6 was dropped.
  
 
 0.3.2 (2016-09-26)
