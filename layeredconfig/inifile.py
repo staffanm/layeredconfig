@@ -18,6 +18,7 @@ class INIFile(ConfigSource):
     def __init__(self,
                  inifilename=None,
                  rootsection="__root__",
+                 sectionsep=".",
                  writable=True, 
                  **kwargs):
         """Loads and optionally saves configuration files in INI format, as
@@ -33,12 +34,24 @@ class INIFile(ConfigSource):
         :param rootsection: An alternative name for the top-level section. 
                             See note below. 
         :type rootsection: str
+        :param sectionsep: separator to use in section names to
+                           separate nested subsections. See note below.
+        :type sectionsep: str
         :param writable: Whether changes to the LayeredConfig object
                          that has this INIFile object amongst its
                          sources should be saved in the INI file.
         :type writable: bool
 
         .. note::
+         
+           Nested subsections is possible, but since the INI format
+           does not natively support nesting, this is accomplished
+           through specially-formatted section names, eg the config
+           value mymodule.mysection.example would be expressed in the
+           ini file as::
+
+               [mymodule.mysection]
+               example = value
 
            Since this source uses :py:mod:`configparser`, and since
            that module handles sections named ``[DEFAULT]``
@@ -84,6 +97,7 @@ class INIFile(ConfigSource):
             self.dirty = False
         self.writable = writable
         self.rootsection = rootsection
+        self.sectionsep = sectionsep
 
     def typed(self, key):
         # INI files carry no intrinsic type information
@@ -95,14 +109,20 @@ class INIFile(ConfigSource):
         # instead)
         if not self.source:
             return []
-        elif self.sectionkey != self.rootsection:
-            # sections can't be nested using configparser
-            return []
         else:
-            return [x for x in self.source.sections() if x != self.rootsection]
+            allsections = [x for x in self.source.sections() if x != self.rootsection]
+            if self.sectionkey != self.rootsection:
+                # find out what subsections are under this subsection (eg nested sections)
+                return [x[len(self.sectionkey+self.sectionsep):].split(self.sectionsep)[0] for x in allsections if x.startswith(self.sectionkey+self.sectionsep)]
+            else:
+                return [x for x in allsections if self.sectionsep not in x]
 
     def subsection(self, key):
-        return INIFile(config=self.source, section=key,
+        if self.sectionkey == self.rootsection:
+            section = key
+        else:
+            section = self.sectionkey + self.sectionsep + key
+        return INIFile(config=self.source, section=section,
                        parent=self, identifier=self.identifier)
 
     def has(self, key):
@@ -118,8 +138,9 @@ class INIFile(ConfigSource):
         self.source.set(self.sectionkey, key, self._strvalue(value))
 
     def keys(self):
-        for k in self.source.options(self.sectionkey):
-            yield k
+        if self.source.has_section(self.sectionkey): 
+            for k in self.source.options(self.sectionkey):
+                yield k
 
     def save(self):
         # this should only be called on root objects

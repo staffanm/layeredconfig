@@ -109,7 +109,6 @@ class LayeredConfigHelperTests(object):
         self.assertEqual(cfg.extra, list_want)
         self.assertEqual(cfg.mymodule.extra, list_want_sub)
 
-        # not supported for INIFile
         if self.supports_nesting:
             self.assertEqual(cfg.mymodule.arbitrary.nesting.depth, 'works')
 
@@ -299,6 +298,9 @@ force = False
 extra = foo, baz
 expires = 2014-10-15
 
+[mymodule.arbitrary.nesting]
+depth = works
+
 [extramodule]
 unique = True
 """)
@@ -357,7 +359,7 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase,
                   ConfigSourceHelperTests):
 
     supported_types = (str,)
-    supports_nesting = False
+    supports_nesting = True
 
     def setUp(self):
         super(TestINIFile, self).setUp()
@@ -380,12 +382,6 @@ class TestINIFile(TestINIFileHelper, unittest.TestCase,
     def test_typed(self):
         for key in self.simple.keys():
             self.assertFalse(self.simple.typed(key))
-
-    # Override: INIFile doesn't support nested subsections
-    def test_subsection_nested(self):
-        subsec = self.complex.subsection('mymodule')
-        self.assertEqual(set(subsec.subsections()),
-                         set(()))
 
     def test_inifile_default_as_root(self):
         # using a rootsection named DEFAULT triggers different
@@ -461,6 +457,9 @@ extra = foo, bar
 force = False
 extra = foo, baz, quux
 expires = 2014-10-24
+
+[mymodule.arbitrary.nesting]
+depth = works
 
 [extramodule]
 unique = True

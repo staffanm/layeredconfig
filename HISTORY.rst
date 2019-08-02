@@ -3,6 +3,19 @@
 History
 =======
 
+0.3.3 (2019-08-??)
+------------------
+
+* INIFile has been extended to support nested subsections.
+* Fixed a problem with DictSource (and by extension the Defaults
+  source) where nested sections could be erroneously handled.
+* The sectionsep parameter to the Environment constructor has been
+  documented. Thanks to @brentmclark for the patch!
+* (TBD) The sectionsep parameter to the Commandline constructor was not
+  respected, instead the separator "_" was hardcoded. Thanks to
+  @dginzbourg for reporting this!
+ 
+
 0.3.2 (2016-09-26)
 ------------------
 
