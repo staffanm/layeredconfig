@@ -33,7 +33,7 @@ import requests
 # The system under test
 from layeredconfig import (LayeredConfig, Defaults, INIFile, JSONFile,
                            YAMLFile, PListFile, PyFile, Environment,
-                           Commandline, EtcdStore)
+                           Commandline, EtcdStore, UNIT_SEP)
 
 
 class LayeredConfigHelperTests(object):
@@ -1005,11 +1005,18 @@ class TestCommandline(unittest.TestCase, ConfigSourceHelperTests):
         self.assertIsInstance(cfg.db.host, str)
         self.assertEquals(cfg.db.host, 'array_of_strings')
 
+    def test_custom_sectionsep_2(self):
+        # https://github.com/staffanm/layeredconfig/issues/13
+        cmdline = ['--log.rotation_size=100']
+        src = Commandline(cmdline, sectionsep=".")
+        cfg = LayeredConfig(src)
+        self.assertIsInstance(cfg.log.rotation_size, str)
+        self.assertEquals(cfg.log.rotation_size, '100')
+
 
 class TestCommandlineConfigured(TestCommandline):
 
     supported_types = (str, int, bool, date, datetime, list)
-
     def setUp(self):
         super(TestCommandlineConfigured, self).setUp()
         simp = argparse.ArgumentParser(description="This is a simple program")
@@ -1028,11 +1035,11 @@ class TestCommandlineConfigured(TestCommandline):
         comp.add_argument('--processes', type=int, help="Number of simultaneous processes")
         comp.add_argument('--force', type=LayeredConfig.boolconvert, nargs='?', const=True)
         comp.add_argument('--extra', action='append')
-        comp.add_argument('--mymodule-force', type=LayeredConfig.boolconvert, nargs='?', const=True)
-        comp.add_argument('--mymodule-extra', action='append')
-        comp.add_argument('--mymodule-expires', type=LayeredConfig.dateconvert)
-        comp.add_argument('--mymodule-arbitrary-nesting-depth')
-        comp.add_argument('--extramodule-unique', nargs='?', const=True)
+        comp.add_argument('--mymodule-force', type=LayeredConfig.boolconvert, nargs='?', const=True, dest='mymodule'+UNIT_SEP+'force')
+        comp.add_argument('--mymodule-extra', action='append', dest='mymodule'+UNIT_SEP+'extra')
+        comp.add_argument('--mymodule-expires', type=LayeredConfig.dateconvert, dest='mymodule'+UNIT_SEP+'expires')
+        comp.add_argument('--mymodule-arbitrary-nesting-depth', dest='mymodule'+UNIT_SEP+'arbitrary'+UNIT_SEP+"nesting"+UNIT_SEP+"depth")
+        comp.add_argument('--extramodule-unique', nargs='?', const=True, dest='extramodule'+UNIT_SEP+'unique')
         self.complex = Commandline(self.complex_cmdline,
                                    parser=comp)
 

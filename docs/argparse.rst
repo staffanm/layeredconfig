@@ -73,4 +73,17 @@ parameters such as `--name``, which was defined in the
   :end-before: # end showhelp
 
 
+.. warning::
+
+   Using a bespoke :py:class:`argparse.ArgumentParser` together with
+   subsections is a bit more complicated. If you want to do that, you
+   will need to setup each argument to the ArgumenParser object by
+   explicitly naming the internal name for the attribute as specifid
+   by the `dest` parameter, and separating the subsections with the
+   special :py:data:`layeredconfig.UNIT_SEP` delimiter, eg:
+   
+   .. literalinclude:: examples/argparse-example.py
+     :start-after: # begin subsection
+     :end-before: # end subsection
+
 	       

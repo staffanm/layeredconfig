@@ -3,7 +3,7 @@
 History
 =======
 
-0.3.3 (2019-08-??)
+0.3.3 (2019-11-11)
 ------------------
 
 * INIFile has been extended to support nested subsections.
@@ -11,9 +11,9 @@ History
   source) where nested sections could be erroneously handled.
 * The sectionsep parameter to the Environment constructor has been
   documented. Thanks to @brentmclark for the patch!
-* (TBD) The sectionsep parameter to the Commandline constructor was not
-  respected, instead the separator "_" was hardcoded. Thanks to
-  @dginzbourg for reporting this!
+* Using "_" in the name of a configuration setting was not supported,
+  regardless of what sectionsep had been set to. Thanks to @dginzbourg
+  for reporting this!
 * Support for python 3.3 and 2.6 was dropped.
  
 

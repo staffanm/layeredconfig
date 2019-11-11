@@ -5,6 +5,8 @@ from six import text_type as str
 
 from . import ConfigSource
 
+UNIT_SEP = chr(31)
+
 class Commandline(ConfigSource):
 
     rest = []
@@ -80,6 +82,7 @@ class Commandline(ConfigSource):
                             self.parser.add_argument("--%s" % argname,
                                                      action='append',
                                                      nargs='?',
+                                                     dest=argname.replace(self.sectionsep, UNIT_SEP),
                                                      const=True)
                             self.autoargs[argname] = True
             self._provided_parser = False
@@ -107,6 +110,7 @@ class Commandline(ConfigSource):
                         self.parser.add_argument("--%s" % argname,
                                                  action='append',
                                                  nargs='?',
+                                                 dest=argname.replace(self.sectionsep, UNIT_SEP),
                                                  const=True)
                         self.autoargs[argname] = True
             # now redo the parsing
@@ -133,6 +137,7 @@ class Commandline(ConfigSource):
                                              action='append',
                                              nargs='?',
                                              const=True,
+                                             dest=key.replace(self.sectionsep, UNIT_SEP),
                                              **kwargs)
                     self.autoargs[key] = True
             except argparse.ArgumentError:
@@ -149,14 +154,14 @@ class Commandline(ConfigSource):
             for arg in vars(self.source).keys():
                 if arg.startswith(self.sectionkey) and getattr(self.source, arg) is not None:
                     k = arg[len(self.sectionkey):]
-                    if k.startswith("_"):
+                    if k.startswith(UNIT_SEP):
                         k = k[1:]
-                    if "_" not in k and getattr(self.source, arg) is not None:
+                    if UNIT_SEP not in k and getattr(self.source, arg) is not None:
                         yield k
 
     def has(self, key):
         if self.sectionkey:
-            key = self.sectionkey + "_" + key
+            key = self.sectionkey + UNIT_SEP + key
         try:
             return getattr(self.source, key) is not None
         except AttributeError:
@@ -164,11 +169,11 @@ class Commandline(ConfigSource):
 
     def get(self, key):
         if self.sectionkey:
-            key = self.sectionkey + "_" + key
+            key = self.sectionkey + UNIT_SEP + key
         r = getattr(self.source, key)
         # undo the automatic list behaviour for autodiscovered
         # arguments (which has store='append')
-        key = key.replace("_", self.sectionsep)
+        key = key.replace(UNIT_SEP, self.sectionsep)
         if (key in self.autoargs and
             isinstance(r, list) and len(r) == 1):
             return r[0]
@@ -178,7 +183,7 @@ class Commandline(ConfigSource):
     def subsections(self):
         # argparse has no internal concept of subsections. We
         # construct one using arguments like '--mymodule-force'. These
-        # are transformed into attributes like 'mymodule_force' on an
+        # are transformed into attributes like 'mymodule<UNIT_SEP>force' on an
         # argparse.Namespace object. Therefore, we can create a list
         # of subsections
         yielded = set()
@@ -189,22 +194,22 @@ class Commandline(ConfigSource):
         for args in subsectionsource.keys():
             if args.startswith(self.sectionkey):
                 args = args[len(self.sectionkey):]
-                if args.startswith("_"): # sectionsep
+                if args.startswith(UNIT_SEP): # sectionsep
                     args = args[1:]
             else:
                 continue
             # '_' is the hardcoded section separator once parse_args
             # has transformed the command line args into properties on
             # a Namespace object.
-            if "_" in args:
-                section = args.split("_")[0]
+            if UNIT_SEP in args:
+                section = args.split(UNIT_SEP)[0]
                 if section not in yielded:
                     yield(section)
                     yielded.add(section)
 
     def subsection(self, key):
         if self.sectionkey:
-            key = self.sectionkey + "_" + key
+            key = self.sectionkey + UNIT_SEP + key
         
         return Commandline(self.commandline,
                            sectionsep=self.sectionsep,

@@ -4,7 +4,7 @@ from __future__ import print_function
 import sys
 import argparse
 from datetime import date, datetime
-from layeredconfig import LayeredConfig, Defaults, INIFile, Commandline
+from layeredconfig import LayeredConfig, Defaults, INIFile, Commandline, UNIT_SEP
 # end import
 
 
@@ -76,3 +76,8 @@ cfg = LayeredConfig(inifile,
 # note that cfg.times is now a str, not an int
 print("Starting in %s for %r times" % (cfg.home, cfg.times))
 # end nodefaults
+
+# begin subsection
+parser.add_argument("--submodule-retry", help="Whether to retry the submodule",
+                    dest="submodule"+UNIT_SEP+"retry")
+# end subsection

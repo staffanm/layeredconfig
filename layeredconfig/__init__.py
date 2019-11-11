@@ -10,7 +10,7 @@ from .dictsource import DictSource
 from .defaults import Defaults
 from .inifile import INIFile
 from .jsonfile import JSONFile
-from .commandline import Commandline
+from .commandline import Commandline, UNIT_SEP
 from .environment import Environment
 from .plistfile import PListFile
 from .yamlfile import YAMLFile
